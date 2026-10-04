@@ -5,7 +5,9 @@ use open62541_sys::{
     UA_StatusCode_name,
 };
 
-crate::data_type!(StatusCode);
+crate::data_type::ua_primitive! {
+    pub struct StatusCode;
+}
 
 impl StatusCode {
     /// Creates wrapper by taking ownership of `src`.
@@ -70,7 +72,7 @@ impl StatusCode {
     }
 
     /// Gets status code.
-    pub(crate) const fn code(&self) -> UA_StatusCode {
+    pub(crate) const fn code(self) -> UA_StatusCode {
         self.0
     }
 }

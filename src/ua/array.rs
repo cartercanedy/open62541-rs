@@ -159,7 +159,6 @@ impl<T: DataType> Array<T> {
     ///
     /// Ownership is transferred. There must not be any aliased references to the array elements, as
     /// they will be owned and freed when the returned value is dropped.
-    #[must_use]
     pub(crate) unsafe fn move_from_raw_parts(
         size: &mut usize,
         ptr: &mut *mut T::Inner,
@@ -378,7 +377,10 @@ impl<T: DataType> Array<T> {
         (size, ptr.cast_mut())
     }
 
-    /// Moves array into `dst`, giving up ownership.
+    /// Moves array into `dst`, giving up ownership. Soundness is contingent on the source and
+    /// destination pointers being produced by [`UA_Array_new`]/
+    /// [`UA_Array_copy`](open62541_sys::UA_Array_copy). Attempting to move from/to pointers with
+    /// any other provenance is UB, and likely will result in a crash.
     ///
     /// Existing data in `dst` is cleared with [`UA_Array_delete()`] before moving the value; it is
     /// safe to use this operation on already initialized target values.
@@ -443,34 +445,47 @@ impl<T: DataType> Array<T> {
     }
 }
 
-/// Internal-only helper for collection of iterators into [`Array`]s.
-//
-// Might be good to make this public as an impl of [`FromIterator`] once performance is optimized.
-pub(crate) trait UaIterExt<T>
-where
-    T: DataType,
-{
-    /// Takes ownership of the elements from the given iterator.
-    ///
-    /// # Panics
-    ///
-    /// Enough memory must be available to allocate array.
-    fn collect_ua_array(self) -> Array<T>;
+impl<T: DataType, const N: usize> From<[T; N]> for Array<T> {
+    fn from(values: [T; N]) -> Self {
+        values.into_iter().collect()
+    }
 }
 
-impl<I, T> UaIterExt<T> for I
-where
-    I: Iterator<Item = T>,
-    T: DataType,
-{
-    fn collect_ua_array(self) -> Array<T> {
-        // This creates a temporary copy by first collecting all elements into a `Vec` and then once
-        // more by copying elements from the `Vec` into the new array from `UA_Array_new()`.
-        //
-        // TODO: Avoid temporary copy. How to deal with unknown size of iterator when initializing a
-        // new array to hold its elements? (possible optimization opportunity with a specialized
-        // implementation for `ExactSizeIterator`)
-        Array::from_slice(&self.collect::<Vec<_>>())
+impl<T: DataType> From<Vec<T>> for Array<T> {
+    fn from(values: Vec<T>) -> Self {
+        values.into_iter().collect()
+    }
+}
+
+impl<T: DataType> FromIterator<T> for Array<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(values: I) -> Self {
+        let mut values = values.into_iter();
+        let (lower, upper) = values.size_hint();
+        if upper != Some(lower) {
+            return values.collect::<Vec<_>>().into();
+        }
+
+        let mut result = Self::new(lower);
+        let mut filled = 0;
+        for (target, value) in result.as_slice_mut().iter_mut().zip(&mut values) {
+            *target = value;
+            filled += 1;
+        }
+
+        // Size hints can be incorrect. Preserve the actual yielded values in either direction.
+        if filled != lower {
+            let mut actual = result.into_vec();
+            actual.truncate(filled);
+            return actual.into();
+        }
+        if let Some(extra) = values.next() {
+            let mut actual = result.into_vec();
+            actual.push(extra);
+            actual.extend(values);
+            return actual.into();
+        }
+
+        result
     }
 }
 
@@ -572,6 +587,45 @@ mod tests {
     use super::*;
 
     #[test]
+    fn collecting_owned_values_preserves_payloads_despite_incorrect_size_hints() {
+        struct Hint<I> {
+            inner: I,
+            upper: Option<usize>,
+        }
+
+        impl<I: Iterator> Iterator for Hint<I> {
+            type Item = I::Item;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                self.inner.next()
+            }
+
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                (self.upper.unwrap_or(0), self.upper)
+            }
+        }
+
+        for upper in [Some(0), Some(1), Some(5), None] {
+            let values = [
+                ua::String::new("first").unwrap(),
+                ua::String::new("second").unwrap(),
+            ];
+            let pointers = values
+                .each_ref()
+                .map(|value| value.as_bytes().unwrap().as_ptr());
+            let result: Array<_> = Hint {
+                inner: values.into_iter(),
+                upper,
+            }
+            .collect();
+            assert_eq!(result.len(), 2);
+            for (value, pointer) in result.iter().zip(pointers) {
+                assert_eq!(value.as_bytes().unwrap().as_ptr(), pointer);
+            }
+        }
+    }
+
+    #[test]
     fn create_and_drop_array() {
         const STRING: &str = "LoremIpsum";
         const LEN: usize = 123;
@@ -601,15 +655,17 @@ mod tests {
 
         // Create array in `open62541`, delete locally.
         //
-        let size = LEN;
-        let ptr = unsafe { UA_Array_new(size, T::data_type()) }.cast::<<T as DataType>::Inner>();
+        let mut size = LEN;
+        let mut ptr =
+            unsafe { UA_Array_new(size, T::data_type()) }.cast::<<T as DataType>::Inner>();
         // Copy value with allocated data into array to catch double free.
         let string = CString::new(STRING).unwrap();
         *unsafe { ptr.add(POS).as_mut() }.unwrap() =
             unsafe { UA_NODEID_STRING_ALLOC(0, string.as_ptr()) };
         drop(string);
 
-        let array: Array<T> = Array::from_raw_parts(size, ptr).unwrap();
+        // SAFETY: This test exclusively owns the original native allocation.
+        let array: Array<T> = unsafe { Array::move_from_raw_parts(&mut size, &mut ptr) }.unwrap();
         assert_eq!(array.len(), LEN);
 
         drop(array);

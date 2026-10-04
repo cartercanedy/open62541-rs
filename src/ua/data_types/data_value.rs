@@ -1,6 +1,27 @@
 use crate::{DataType, DataTypeExt, ua};
 
-crate::data_type!(DataValue);
+crate::data_type::ua_struct! {
+    pub struct DataValue {
+        #[builder(skip)]
+        #[skip(uses = Self::value)]
+        value: &ua::Variant,
+        #[builder(skip)]
+        #[skip(uses = Self::server_timestamp)]
+        serverTimestamp: i64,
+        #[builder(skip)]
+        #[skip(uses = Self::source_timestamp)]
+        sourceTimestamp: i64,
+        #[builder(skip)]
+        #[skip(uses = Self::server_picoseconds)]
+        serverPicoseconds: u16,
+        #[builder(skip)]
+        #[skip(uses = Self::source_picoseconds)]
+        sourcePicoseconds: u16,
+        #[builder(skip)]
+        #[skip(uses = Self::status)]
+        status: u32
+    }
+}
 
 impl DataValue {
     #[must_use]
@@ -17,22 +38,22 @@ impl DataValue {
     }
 
     #[must_use]
-    pub fn with_value(mut self, value: &ua::Variant) -> Self {
-        value.clone_into_raw(&mut self.0.value);
+    pub fn with_value(mut self, value: ua::Variant) -> Self {
+        value.move_into_raw(&mut self.0.value);
         self.0.set_hasValue(true);
         self
     }
 
     #[must_use]
-    pub fn with_source_timestamp(mut self, source_timestamp: &ua::DateTime) -> Self {
-        source_timestamp.clone_into_raw(&mut self.0.sourceTimestamp);
+    pub fn with_source_timestamp(mut self, source_timestamp: ua::DateTime) -> Self {
+        source_timestamp.move_into_raw(&mut self.0.sourceTimestamp);
         self.0.set_hasSourceTimestamp(true);
         self
     }
 
     #[must_use]
-    pub fn with_server_timestamp(mut self, server_timestamp: &ua::DateTime) -> Self {
-        server_timestamp.clone_into_raw(&mut self.0.serverTimestamp);
+    pub fn with_server_timestamp(mut self, server_timestamp: ua::DateTime) -> Self {
+        server_timestamp.move_into_raw(&mut self.0.serverTimestamp);
         self.0.set_hasServerTimestamp(true);
         self
     }
@@ -52,8 +73,8 @@ impl DataValue {
     }
 
     #[must_use]
-    pub fn with_status(mut self, status: &ua::StatusCode) -> Self {
-        status.clone_into_raw(&mut self.0.status);
+    pub fn with_status(mut self, status: ua::StatusCode) -> Self {
+        status.move_into_raw(&mut self.0.status);
         self.0.set_hasStatus(true);
         self
     }

@@ -1,7 +1,7 @@
-crate::data_type!(MonitoringMode);
-
-crate::enum_variants!(
-    MonitoringMode,
-    UA_MonitoringMode,
-    [DISABLED, SAMPLING, REPORTING]
-);
+crate::data_type::ua_enum! {
+    pub enum MonitoringMode {
+        DISABLED = open62541_sys::UA_MonitoringMode::UA_MONITORINGMODE_DISABLED,
+        SAMPLING = open62541_sys::UA_MonitoringMode::UA_MONITORINGMODE_SAMPLING,
+        REPORTING = open62541_sys::UA_MonitoringMode::UA_MONITORINGMODE_REPORTING,
+    }
+}

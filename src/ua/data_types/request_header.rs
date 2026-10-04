@@ -1,6 +1,23 @@
 use std::time::Duration;
 
-crate::data_type!(RequestHeader);
+use crate::ua;
+
+crate::data_type::ua_struct! {
+    pub struct RequestHeader {
+        auditEntryId: &ua::String,
+        #[builder(skip)]
+        #[skip(uses = Self::timeout_hint)]
+        timeoutHint: u32,
+        requestHandle: u32,
+        /// The native client replaces this timestamp when sending a request.
+        #[from_inner]
+        timestamp: ua::DateTime,
+        /// The native client replaces this token when a session is active.
+        authenticationToken: &ua::NodeId,
+        additionalHeader: &ua::ExtensionObject,
+        returnDiagnostics: u32
+    }
+}
 
 impl RequestHeader {
     /// Gets the timeout hint.

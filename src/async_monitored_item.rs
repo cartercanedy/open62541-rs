@@ -118,7 +118,7 @@ impl<K: MonitoredItemKind> MonitoredItemBuilder<K> {
     ///
     /// See:
     ///   - [`MonitoredItemCreateRequestBuilder::attribute_id()`]
-    ///   - [`ua::MonitoredItemCreateRequest::with_attribute_id()`]
+    ///   - [`ua::ReadValueId::with_attribute_id()`]
     ///
     /// # Examples
     ///
@@ -179,7 +179,7 @@ impl<K: MonitoredItemKind> MonitoredItemBuilder<K> {
     ///   - [`MonitoredItemCreateRequestBuilder::monitoring_mode()`]
     ///   - [`ua::MonitoredItemCreateRequest::with_monitoring_mode()`]
     #[must_use]
-    pub fn monitoring_mode(mut self, monitoring_mode: ua::MonitoringMode) -> Self {
+    pub const fn monitoring_mode(mut self, monitoring_mode: ua::MonitoringMode) -> Self {
         self.monitoring_mode = Some(monitoring_mode);
         self
     }
@@ -190,7 +190,7 @@ impl<K: MonitoredItemKind> MonitoredItemBuilder<K> {
     ///
     /// See:
     ///   - [`MonitoredItemCreateRequestBuilder::sampling_interval()`]
-    ///   - [`ua::MonitoredItemCreateRequest::with_sampling_interval()`]
+    ///   - [`ua::MonitoringParameters::with_sampling_interval()`]
     #[must_use]
     pub const fn sampling_interval(mut self, sampling_interval: Option<Duration>) -> Self {
         self.sampling_interval = Some(sampling_interval);
@@ -203,7 +203,7 @@ impl<K: MonitoredItemKind> MonitoredItemBuilder<K> {
     ///
     /// See:
     ///   - [`MonitoredItemCreateRequestBuilder::filter()`]
-    ///   - [`ua::MonitoredItemCreateRequest::with_filter()`]
+    ///   - [`ua::MonitoringParameters::with_filter()`]
     #[must_use]
     pub fn filter(mut self, filter: impl MonitoringFilter) -> Self {
         self.filter = Some(Box::new(filter));
@@ -216,7 +216,7 @@ impl<K: MonitoredItemKind> MonitoredItemBuilder<K> {
     ///
     /// See:
     ///   - [`MonitoredItemCreateRequestBuilder::queue_size()`]
-    ///   - [`ua::MonitoredItemCreateRequest::with_queue_size()`]
+    ///   - [`ua::MonitoringParameters::with_queue_size()`]
     #[must_use]
     pub const fn queue_size(mut self, queue_size: u32) -> Self {
         self.queue_size = Some(queue_size);
@@ -229,7 +229,7 @@ impl<K: MonitoredItemKind> MonitoredItemBuilder<K> {
     ///
     /// See:
     ///   - [`MonitoredItemCreateRequestBuilder::discard_oldest()`]
-    ///   - [`ua::MonitoredItemCreateRequest::with_discard_oldest()`]
+    ///   - [`ua::MonitoringParameters::with_discard_oldest()`]
     #[must_use]
     pub const fn discard_oldest(mut self, discard_oldest: bool) -> Self {
         self.discard_oldest = Some(discard_oldest);

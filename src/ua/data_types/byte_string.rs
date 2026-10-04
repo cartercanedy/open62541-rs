@@ -9,7 +9,9 @@ use crate::{ArrayValue, DataType, ua};
 // Technically, `open62541_sys::ByteString` is an alias for `open62541_sys::String`. But we treat it
 // as a distinct type to improve type safety. The difference is that `String` contains valid Unicode
 // whereas `ByteString` may contain arbitrary byte sequences.
-crate::data_type!(ByteString);
+crate::data_type::ua_struct! {
+    pub struct ByteString;
+}
 
 // In the implementation below, remember that `self.0.data` may be `UA_EMPTY_ARRAY_SENTINEL` for any
 // strings of `length` 0. It may also be `ptr::null()` for "invalid" strings. This is similar to how

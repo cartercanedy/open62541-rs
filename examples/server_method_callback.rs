@@ -51,15 +51,15 @@ fn main() -> anyhow::Result<()> {
     println!("Adding server nodes");
 
     let input_argument = ua::Argument::init()
-        .with_data_type(&ua::NodeId::numeric(0, 12))
-        .with_name(&ua::String::new("MyInput")?)
-        .with_description(&ua::LocalizedText::new("en-US", "A String")?)
+        .with_data_type(ua::NodeId::numeric(0, 12))
+        .with_name(ua::String::new("MyInput")?)
+        .with_description(ua::LocalizedText::new("en-US", "A String")?)
         .with_value_rank(-1);
 
     let output_argument = ua::Argument::init()
-        .with_data_type(&ua::NodeId::numeric(0, 12))
-        .with_name(&ua::String::new("MyOutput")?)
-        .with_description(&ua::LocalizedText::new("en-US", "A String")?)
+        .with_data_type(ua::NodeId::numeric(0, 12))
+        .with_name(ua::String::new("MyOutput")?)
+        .with_description(ua::LocalizedText::new("en-US", "A String")?)
         .with_value_rank(-1);
 
     let method_node = MethodNode {
@@ -68,7 +68,7 @@ fn main() -> anyhow::Result<()> {
         reference_type_id: ua::NodeId::ns0(UA_NS0ID_HASCOMPONENT),
         browse_name: ua::QualifiedName::new(1, "hello world"),
         attributes: ua::MethodAttributes::init()
-            .with_display_name(&ua::LocalizedText::new("en-US", "Hello World")?)
+            .with_display_name(ua::LocalizedText::new("en-US", "Hello World")?)
             .with_executable(true)
             .with_user_executable(true),
         input_arguments: ua::Array::from_slice(&[input_argument]),

@@ -9,8 +9,67 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `Enumeration` implements `Display`, formatting its raw unsigned numeric value.
+- Collect owned values into `ua::Array<T>` without cloning them, including Rust arrays, vectors,
+  and iterators.
+- Add `Variant::try_into_scalar()` for extraction with the existing `Result` and error type.
+- Inspect native protocol enum Variants as `ValueType::Enumeration` and
+  `ScalarValue::Enumeration`. `ua::Enumeration` can borrow or extract any native enum scalar and
+  copy enum arrays. `Variant::type_id()` retains the concrete source datatype identity;
+  wire-decoded Int32 values still inspect as Int32.
+- Add numeric Serde serialization and deserialization for protocol enums, integer-backed flags,
+  and UInt32 enum helpers. Protocol enums use signed Int32 values and preserve unknown bit patterns;
+  flags and helpers use their unsigned storage width. Enum Variants serialize in the same numeric
+  form, and enum-array serialization borrows the native payload.
+- Add public unsafe unchecked enum and mask raw conversion helpers.
+- Expose `ua::ExtensionObjectEncoding` and `ExtensionObject::encoding()`.
+- Add const `set()`, `unset()`, and `clear()` flag operations and readable mask predicates/setters
+  such as `reference_type_id()` and `with_reference_type_id()`.
 - Implemented accessor/utility methods for `ua::RelativePath`, `ua::BrowsePath`, and
   `ua::RelativePathElement`.
+
+### Changed
+
+- Breaking: datatype builders take owned wrapper values and native `Array<T>` buffers. Use
+  `[values].into()` or `vec.into()` to move collections into native arrays, and clone explicitly
+  when retaining a borrowed input. String and text builders take validated `String` and
+  `LocalizedText` wrappers. `Attributes::with_display_name()` and `Variant::with_scalar()` also
+  consume their inputs. `with_subscription_ids()` and `with_monitored_item_ids()` continue to
+  accept typed ID slices.
+- Breaking: configure monitored-item child fields through `ReadValueId` and `MonitoringParameters`,
+  then pass them to `with_item_to_monitor()` and `with_requested_parameters()`. The redundant
+  nested field shortcuts on `MonitoredItemCreateRequest` have been removed.
+- Breaking: filter builders take owned `ExtensionObject` values and arrays. Convert semantic
+  filters and operands with `to_extension_object()` before calling them.
+- Breaking: `VariableAttributes::data_type()` now gets the declared field. Use
+  `<ua::VariableAttributes as DataType>::data_type()` to request its native descriptor.
+- Breaking: `AttributeId` and `NodeIdType` use Copy UInt32 storage. Their `DataType::Inner` is `u32`,
+  and `NodeId::identifier_type()` returns a value instead of a reference.
+- Breaking: generated array field accessors uniformly provide borrowed `field()` / `field_mut()`
+  views and owned `take_field()` extraction. Copy explicitly when an owned container is needed.
+  `StructureField::array_dimensions()` now exposes `UInt32` elements rather than Rust primitives.
+- Breaking: `ApplicationType`, `DataChangeTrigger`, `FilterOperator`, `MessageSecurityMode`, and
+  `UserTokenType` use their named OPC UA descriptors rather than UInt32. Their encoded type
+  identifiers can change, and UInt32 Variants are no longer accepted as these enums; use the named
+  enum or Int32 wire representation instead. Numeric Variant Serde interprets high-bit values as
+  signed Int32 (for example, `0xffff_ffff` serializes as `-1`); raw access and numeric `Display`
+  remain unsigned.
+- Breaking: native mask types use themselves as `DataTypeExt::Inner`. Generic code requiring an
+  associated type such as `Inner = ua::Byte` must use the mask type instead.
+- Breaking: `TrustListDataType::with_*` certificate and CRL builders accept `Array<ByteString>`
+  rather than slices of `String`, matching the binary payloads in the C schema.
+- Integer-backed mask `Debug` output uses the numeric value, such as `1`, instead of a wrapper
+  label such as `AccessLevelType(1)`. Uppercase flag constants and const operation synonyms remain.
+
+### Fixed
+
+- Extract native enum and alias values from compatible decoded wire representations, including
+  arrays, without mutating borrowed payloads or rewriting the source Variant's descriptor.
+- Preserve unknown/high-bit enum values with signed native enum storage, including on Windows MSVC.
+- Correct `SpecifiedAttributes` mask values and mark Method executable assignments as specified,
+  including assignments of `false`.
+- Preserve mutable pointer provenance when consuming a Variant as itself.
+- Fix native result-array leaks in `Server::browse_recursive()` and `ClientBuilder::get_endpoints()`.
 
 ## [0.12.1] - 2026-10-22
 

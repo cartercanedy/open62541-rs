@@ -1,6 +1,8 @@
 use open62541_sys::UA_Guid;
 
-crate::data_type!(Guid);
+crate::data_type::ua_struct! {
+    pub struct Guid;
+}
 
 impl Guid {
     #[must_use]

@@ -44,6 +44,8 @@ impl ValueType {
     ///
     /// This gets the [`ValueType`] corresponding to the given data type's node ID. If the node ID
     /// is not a known data type, [`ValueType::Unsupported`] is returned.
+    /// This lookup does not resolve subtype ancestry. [`ua::Variant::value_type()`] can additionally
+    /// recognize native enum descriptors and report [`ValueType::Enumeration`].
     #[must_use]
     pub fn from_data_type(node_id: &ua::NodeId) -> Self {
         macro_rules! check {

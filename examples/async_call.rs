@@ -123,7 +123,7 @@ async fn get_definition(
     // Look at children of the method node. We expect properties for input and output arguments.
     // TODO: Allow limiting set of returned children by passing filters to `BrowseDescription`.
     let (references, _) = client
-        .browse(&ua::BrowseDescription::default().with_node_id(method_node_id))
+        .browse(&ua::BrowseDescription::default().with_node_id(method_node_id.clone()))
         .await?;
 
     // Either of input and output arguments may be absent when the method has no arguments.
@@ -223,7 +223,7 @@ fn get_arguments(value: &DataValue<ua::Variant>) -> anyhow::Result<Vec<(ua::Stri
 /// Returns `None` for non-property references.
 fn property_name(reference: &ua::ReferenceDescription) -> Option<&str> {
     // TODO: Add methods for these checks?
-    (reference.node_class() == &ua::NodeClass::VARIABLE
+    (*reference.node_class() == ua::NodeClass::VARIABLE
         && reference.reference_type_id().as_ns0() == Some(UA_NS0ID_HASPROPERTY)
         && reference.type_definition().node_id().as_ns0() == Some(UA_NS0ID_PROPERTYTYPE))
     .then(|| {

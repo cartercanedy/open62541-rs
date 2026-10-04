@@ -1,6 +1,10 @@
 use crate::{DataType as _, FilterOperand, ua};
 
-crate::data_type!(LiteralOperand);
+crate::data_type::ua_struct! {
+    pub struct LiteralOperand {
+        value: &ua::Variant
+    }
+}
 
 impl LiteralOperand {
     #[must_use]

@@ -30,7 +30,7 @@ use parking_lot::{Condvar, Mutex, MutexGuard};
 
 use crate::{
     Attribute, Attributes, BrowseResult, DEFAULT_PORT_NUMBER, DataType, DataValue, Error, Result,
-    UaIterExt as _, ua,
+    ua,
 };
 
 pub(crate) use self::node_context::NodeContext;
@@ -187,8 +187,9 @@ impl ServerBuilder {
         server_urls
             .iter()
             .map(|server_url| ua::String::new(server_url).unwrap())
-            .collect_ua_array()
+            .collect::<ua::Array<_>>()
             .move_into_raw(&mut config.serverUrlsSize, &mut config.serverUrls);
+
         self
     }
 
@@ -688,7 +689,7 @@ impl Server {
                 out_new_node_id.as_mut_ptr(),
             )
         });
-        Error::verify_good(&status_code)?;
+        Error::verify_good(status_code)?;
 
         let status_code = ua::StatusCode::new(unsafe {
             UA_Server_addNode_finish(
@@ -698,7 +699,7 @@ impl Server {
                 DataType::to_raw_copy(&out_new_node_id),
             )
         });
-        Error::verify_good(&status_code)?;
+        Error::verify_good(status_code)?;
 
         Ok(out_new_node_id)
     }
@@ -747,7 +748,7 @@ impl Server {
                 out_new_node_id.as_mut_ptr(),
             )
         });
-        Error::verify_good(&status_code)?;
+        Error::verify_good(status_code)?;
 
         let status_code = ua::StatusCode::new(unsafe {
             UA_Server_addNode_finish(
@@ -757,7 +758,7 @@ impl Server {
                 DataType::to_raw_copy(&out_new_node_id),
             )
         });
-        Error::verify_good(&status_code)?;
+        Error::verify_good(status_code)?;
 
         Ok(out_new_node_id)
     }
@@ -801,12 +802,12 @@ impl Server {
                 // TODO: Verify that `UA_Server_addNode_begin()` does not take ownership.
                 DataType::to_raw_copy(&type_definition),
                 attributes.as_node_attributes().as_ptr().cast(),
-                ua::VariableAttributes::data_type(),
+                <ua::VariableAttributes as DataType>::data_type(),
                 ptr::null_mut(),
                 out_new_node_id.as_mut_ptr(),
             )
         });
-        Error::verify_good(&status_code)?;
+        Error::verify_good(status_code)?;
 
         let status_code = ua::StatusCode::new(unsafe {
             UA_Server_addNode_finish(
@@ -816,7 +817,7 @@ impl Server {
                 DataType::to_raw_copy(&out_new_node_id),
             )
         });
-        Error::verify_good(&status_code)?;
+        Error::verify_good(status_code)?;
 
         Ok(out_new_node_id)
     }
@@ -875,7 +876,7 @@ impl Server {
         // In case of an error, the node context has already been freed by the destructor. We must
         // not consume it ourselves (to avoid double-freeing). In case of success, the node context
         // will be consumed when the node is eventually deleted (`UA_ServerConfig::nodeLifecycle`).
-        Error::verify_good(&status_code)?;
+        Error::verify_good(status_code)?;
 
         Ok(out_new_node_id)
     }
@@ -953,7 +954,7 @@ impl Server {
                 out_new_node_id.as_mut_ptr(),
             )
         });
-        Error::verify_good(&status_code)?;
+        Error::verify_good(status_code)?;
 
         Ok((
             out_new_node_id,
@@ -1005,7 +1006,7 @@ impl Server {
                 out_new_node_id.as_mut_ptr(),
             )
         });
-        Error::verify_good(&status_code)?;
+        Error::verify_good(status_code)?;
 
         Ok(out_new_node_id)
     }
@@ -1029,7 +1030,7 @@ impl Server {
                 true,
             )
         });
-        Error::verify_good(&status_code)
+        Error::verify_good(status_code)
     }
 
     /// Adds a reference from one node to another.
@@ -1111,7 +1112,7 @@ impl Server {
                 is_forward,
             )
         });
-        Error::verify_good(&status_code)
+        Error::verify_good(status_code)
     }
 
     /// Deletes a reference between two nodes.
@@ -1141,7 +1142,7 @@ impl Server {
                 delete_bidirectional,
             )
         });
-        Error::verify_good(&status_code)
+        Error::verify_good(status_code)
     }
 
     /// Creates an event.
@@ -1179,7 +1180,7 @@ impl Server {
                 out_event_id.as_mut_ptr(),
             )
         });
-        Error::verify_good(&status_code)?;
+        Error::verify_good(status_code)?;
         let Some(event_id) = ua::EventId::new(out_event_id) else {
             return Err(Error::internal(
                 "UA_Server_createEvent should return event ID",
@@ -1200,7 +1201,7 @@ impl Server {
     ///
     /// # async fn example(server: &Server) -> Result<()> {
     /// let node_id = ua::NodeId::ns0(UA_NS0ID_SERVER_SERVERSTATUS);
-    /// let browse_description = ua::BrowseDescription::default().with_node_id(&node_id);
+    /// let browse_description = ua::BrowseDescription::default().with_node_id(node_id);
     /// let (references, continuation_point) = server.browse(1000, &browse_description)?;
     /// # Ok(())
     /// # }
@@ -1225,8 +1226,8 @@ impl Server {
                 browse_description.as_ptr(),
             ))
         };
-        Error::verify_good(&result.status_code())?;
-        to_browse_result(&result)
+        Error::verify_good(result.status_code())?;
+        to_browse_result(result)
     }
 
     /// Browses continuation point for more references.
@@ -1249,8 +1250,8 @@ impl Server {
                 continuation_point.as_byte_string().as_ptr(),
             ))
         };
-        Error::verify_good(&result.status_code())?;
-        to_browse_result(&result)
+        Error::verify_good(result.status_code())?;
+        to_browse_result(result)
     }
 
     /// Browses nodes recursively.
@@ -1281,7 +1282,7 @@ impl Server {
     /// #
     /// let targets = server.browse_recursive(
     ///     &ua::BrowseDescription::default().with_node_id(
-    ///         &ua::NodeId::ns0(UA_NS0ID_SERVER_SERVERSTATUS),
+    ///         ua::NodeId::ns0(UA_NS0ID_SERVER_SERVERSTATUS),
     ///     ),
     /// )?;
     ///
@@ -1327,8 +1328,10 @@ impl Server {
                 &raw mut result_ptr,
             )
         });
-        Error::verify_good(&status_code)?;
-        let Some(result) = ua::Array::from_raw_parts(result_size, result_ptr) else {
+        // SAFETY: Any returned allocation belongs to this caller; untouched outputs are null/zero.
+        let result = unsafe { ua::Array::move_from_raw_parts(&mut result_size, &mut result_ptr) };
+        Error::verify_good(status_code)?;
+        let Some(result) = result else {
             return Err(Error::internal("recursive browse should return result"));
         };
         Ok(result)
@@ -1394,7 +1397,7 @@ impl Server {
         // until the end of this function.
         let (browse_path_size, browse_path_ptr) =
             unsafe { ua::Array::raw_parts_from_slice(browse_path) };
-        let result = unsafe {
+        let mut result = unsafe {
             ua::BrowsePathResult::from_raw(UA_Server_browseSimplifiedBrowsePath(
                 // SAFETY: Cast to `mut` pointer, function is marked `UA_THREADSAFE`.
                 self.as_mut_ptr(),
@@ -1405,11 +1408,11 @@ impl Server {
                 browse_path_ptr,
             ))
         };
-        Error::verify_good(&result.status_code())?;
-        let targets = result
-            .targets()
-            .ok_or(Error::internal("browse should return targets"))?;
-        Ok(targets)
+        Error::verify_good(result.status_code())?;
+
+        result
+            .take_targets()
+            .ok_or(Error::internal("browse should return targets"))
     }
 
     /// Translates browse path to node IDs.
@@ -1434,12 +1437,12 @@ impl Server {
     /// let target_name_2 = ua::QualifiedName::new(0, "ProductName");
     ///
     /// let targets = server.translate_browse_path_to_node_ids(&ua::BrowsePath::init()
-    ///     .with_starting_node(&ua::NodeId::ns0(UA_NS0ID_SERVER_SERVERSTATUS))
-    ///     .with_relative_path(&ua::RelativePath::init()
-    ///         .with_elements(&[
-    ///             ua::RelativePathElement::init().with_target_name(&target_name_1),
-    ///             ua::RelativePathElement::init().with_target_name(&target_name_2),
-    ///         ])
+    ///     .with_starting_node(ua::NodeId::ns0(UA_NS0ID_SERVER_SERVERSTATUS))
+    ///     .with_relative_path(ua::RelativePath::init()
+    ///         .with_elements([
+    ///             ua::RelativePathElement::init().with_target_name(target_name_1),
+    ///             ua::RelativePathElement::init().with_target_name(target_name_2),
+    ///         ].into())
     ///     )
     /// )?;
     ///
@@ -1464,18 +1467,18 @@ impl Server {
         &self,
         browse_path: &ua::BrowsePath,
     ) -> Result<ua::Array<ua::BrowsePathTarget>> {
-        let result = unsafe {
+        let mut result = unsafe {
             ua::BrowsePathResult::from_raw(UA_Server_translateBrowsePathToNodeIds(
                 // SAFETY: Cast to `mut` pointer, function is marked `UA_THREADSAFE`.
                 self.as_mut_ptr(),
                 browse_path.as_ptr(),
             ))
         };
-        Error::verify_good(&result.status_code())?;
-        let targets = result
-            .targets()
-            .ok_or(Error::internal("translation should return targets"))?;
-        Ok(targets)
+        Error::verify_good(result.status_code())?;
+
+        result
+            .take_targets()
+            .ok_or(Error::internal("translation should return targets"))
     }
 
     /// Reads node attribute.
@@ -1538,8 +1541,8 @@ impl Server {
         attribute: T,
     ) -> DataValue<T::Value> {
         let item = ua::ReadValueId::init()
-            .with_node_id(node_id)
-            .with_attribute_id(&attribute.id());
+            .with_node_id(node_id.clone())
+            .with_attribute_id(attribute.id());
 
         let result = unsafe {
             ua::DataValue::from_raw(UA_Server_read(
@@ -1570,7 +1573,7 @@ impl Server {
                 DataType::to_raw_copy(value),
             )
         });
-        Error::verify_good(&status_code)
+        Error::verify_good(status_code)
     }
 
     /// Writes a `DataValue` to a node.
@@ -1589,7 +1592,7 @@ impl Server {
                 DataType::to_raw_copy(value),
             )
         });
-        Error::verify_good(&status_code)
+        Error::verify_good(status_code)
     }
 
     /// Reads object property.
@@ -1621,7 +1624,7 @@ impl Server {
     /// #     ua::NodeId::ns0(UA_NS0ID_HASPROPERTY),
     /// #     ua::QualifiedName::new(1, "SomeVariable"),
     /// #     ua::VariableAttributes::init()
-    /// #         .with_data_type(&ua::NodeId::ns0(UA_NS0ID_STRING))
+    /// #         .with_data_type(ua::NodeId::ns0(UA_NS0ID_STRING))
     /// #         .with_value_rank(-1),
     /// # ))?;
     /// #
@@ -1660,7 +1663,7 @@ impl Server {
                 value.as_mut_ptr(),
             )
         });
-        Error::verify_good(&status_code)?;
+        Error::verify_good(status_code)?;
         Ok(value)
     }
 
@@ -1697,7 +1700,7 @@ impl Server {
     /// #     ua::NodeId::ns0(UA_NS0ID_HASPROPERTY),
     /// #     ua::QualifiedName::new(1, "SomeVariable"),
     /// #     ua::VariableAttributes::init()
-    /// #         .with_data_type(&ua::NodeId::ns0(UA_NS0ID_STRING))
+    /// #         .with_data_type(ua::NodeId::ns0(UA_NS0ID_STRING))
     /// #         .with_value_rank(-1),
     /// # ))?;
     /// #
@@ -1727,7 +1730,7 @@ impl Server {
                 DataType::to_raw_copy(value),
             )
         });
-        Error::verify_good(&status_code)
+        Error::verify_good(status_code)
     }
 
     /// Gets server statistics.
@@ -1842,7 +1845,7 @@ impl ServerRunner {
                 server.as_ptr().cast_mut(),
             )
         });
-        match Error::verify_good(&status_code) {
+        match Error::verify_good(status_code) {
             Ok(()) => state_guard.set_state(RunnerStateInner::Shutdown),
             Err(err) => {
                 state_guard.set_state(RunnerStateInner::Error);
@@ -1880,7 +1883,7 @@ impl ServerRunner {
                 server.as_ptr().cast_mut(),
             )
         });
-        match Error::verify_good(&status_code) {
+        match Error::verify_good(status_code) {
             Ok(()) => state_guard.set_state(RunnerStateInner::Startup),
             Err(err) => {
                 state_guard.set_state(RunnerStateInner::Error);
@@ -1924,7 +1927,7 @@ impl ServerRunner {
                 server.as_ptr().cast_mut(),
             )
         });
-        match Error::verify_good(&status_code) {
+        match Error::verify_good(status_code) {
             Ok(()) => state_guard.set_state(RunnerStateInner::Shutdown),
             Err(err) => {
                 state_guard.set_state(RunnerStateInner::Error);
@@ -1952,12 +1955,12 @@ impl Drop for ServerRunner {
 }
 
 /// Converts [`ua::BrowseResult`] to our public result type.
-fn to_browse_result(result: &ua::BrowseResult) -> BrowseResult {
+fn to_browse_result(mut result: ua::BrowseResult) -> BrowseResult {
     // Make sure to verify the inner status code inside `BrowseResult`. The service request finishes
     // without error, even when browsing the node has failed.
-    Error::verify_good(&result.status_code())?;
+    Error::verify_good(result.status_code())?;
 
-    let Some(references) = result.references() else {
+    let Some(references) = result.take_references() else {
         return Err(Error::internal("browse should return references"));
     };
 

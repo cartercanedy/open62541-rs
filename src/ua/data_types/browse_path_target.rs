@@ -1,13 +1,16 @@
-use crate::{DataType as _, ua};
+use crate::ua;
 
-crate::data_type!(BrowsePathTarget);
+crate::data_type::ua_struct! {
+    pub struct BrowsePathTarget {
+        targetId: &ua::ExpandedNodeId,
+
+        #[builder(skip)]
+        #[skip(uses = BrowsePathTarget::remaining_path_index)]
+        remainingPathIndex: u32
+    }
+}
 
 impl BrowsePathTarget {
-    #[must_use]
-    pub fn target_id(&self) -> &ua::ExpandedNodeId {
-        ua::ExpandedNodeId::raw_ref(&self.0.targetId)
-    }
-
     /// Returns the index of the first unprocessed element in the [`ua::RelativePath`].
     ///
     /// This returns `None` if all elements were processed.

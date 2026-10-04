@@ -1,6 +1,14 @@
 use crate::ua;
 
-crate::data_type!(CreateMonitoredItemsRequest);
+crate::data_type::ua_struct! {
+    pub struct CreateMonitoredItemsRequest {
+        itemsToCreate: [ua::MonitoredItemCreateRequest],
+        timestampsToReturn: &ua::TimestampsToReturn,
+        #[builder(skip)]
+        #[skip(uses = Self::subscription_id)]
+        subscriptionId: u32
+    }
+}
 
 impl CreateMonitoredItemsRequest {
     #[must_use]
@@ -10,17 +18,11 @@ impl CreateMonitoredItemsRequest {
     }
 
     #[must_use]
-    pub fn with_items_to_create(
-        mut self,
-        items_to_create: &[ua::MonitoredItemCreateRequest],
-    ) -> Self {
-        let array = ua::Array::from_slice(items_to_create);
-        array.move_into_raw(&mut self.0.itemsToCreateSize, &mut self.0.itemsToCreate);
-        self
-    }
-
-    #[must_use]
-    pub(crate) fn items_to_create(&self) -> Option<&[ua::MonitoredItemCreateRequest]> {
-        unsafe { ua::Array::slice_from_raw_parts(self.0.itemsToCreateSize, self.0.itemsToCreate) }
+    pub const fn subscription_id(&self) -> Option<ua::SubscriptionId> {
+        if let Some(id) = ua::IntegerId::from_u32(self.0.subscriptionId) {
+            Some(ua::SubscriptionId::new(id))
+        } else {
+            None
+        }
     }
 }

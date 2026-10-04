@@ -1,9 +1,9 @@
-use crate::{DataType as _, UaIterExt as _, ua};
+use crate::{DataType as _, ua};
 
 impl super::VariableAttributes {
     #[must_use]
-    pub fn with_data_type(mut self, data_type: &ua::NodeId) -> Self {
-        data_type.clone_into_raw(&mut self.0.dataType);
+    pub fn with_data_type(mut self, data_type: ua::NodeId) -> Self {
+        data_type.move_into_raw(&mut self.0.dataType);
         self.0.specifiedAttributes |= ua::SpecifiedAttributes::DATATYPE.as_u32();
         self
     }
@@ -16,19 +16,17 @@ impl super::VariableAttributes {
     }
 
     #[must_use]
-    pub fn with_array_dimensions(mut self, array_dimensions: &[u32]) -> Self {
+    pub fn with_array_dimensions(mut self, array_dimensions: ua::Array<ua::UInt32>) -> Self {
         array_dimensions
-            .iter()
-            .copied()
-            .map(ua::UInt32::new)
-            .collect_ua_array()
             .move_into_raw(&mut self.0.arrayDimensionsSize, &mut self.0.arrayDimensions);
+
         self.0.specifiedAttributes |= ua::SpecifiedAttributes::ARRAYDIMENSIONS.as_u32();
+
         self
     }
 
     #[must_use]
-    pub const fn with_access_level(mut self, access_level: &ua::AccessLevelType) -> Self {
+    pub const fn with_access_level(mut self, access_level: ua::AccessLevelType) -> Self {
         self.0.accessLevel = access_level.as_u8();
         self.0.specifiedAttributes |= ua::SpecifiedAttributes::ACCESSLEVEL.as_u32();
         self

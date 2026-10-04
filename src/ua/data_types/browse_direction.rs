@@ -1,7 +1,8 @@
-crate::data_type!(BrowseDirection);
-
-crate::enum_variants!(
-    BrowseDirection,
-    UA_BrowseDirection,
-    [FORWARD, INVERSE, BOTH, INVALID],
-);
+crate::data_type::ua_enum! {
+    pub enum BrowseDirection {
+        FORWARD = open62541_sys::UA_BrowseDirection::UA_BROWSEDIRECTION_FORWARD,
+        INVERSE = open62541_sys::UA_BrowseDirection::UA_BROWSEDIRECTION_INVERSE,
+        BOTH = open62541_sys::UA_BrowseDirection::UA_BROWSEDIRECTION_BOTH,
+        INVALID = open62541_sys::UA_BrowseDirection::UA_BROWSEDIRECTION_INVALID,
+    }
+}

@@ -1,13 +1,6 @@
-crate::data_type!(Range);
-
-impl Range {
-    #[must_use]
-    pub const fn low(&self) -> f64 {
-        self.0.low
-    }
-
-    #[must_use]
-    pub const fn high(&self) -> f64 {
-        self.0.high
+crate::data_type::ua_struct! {
+    pub struct Range {
+        low: f64,
+        high: f64
     }
 }

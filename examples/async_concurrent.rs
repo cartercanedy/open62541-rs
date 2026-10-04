@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
             let (references, _) = client
                 .browse(
                     &ua::BrowseDescription::default()
-                        .with_node_id(&ua::NodeId::ns0(UA_NS0ID_SERVER)),
+                        .with_node_id(ua::NodeId::ns0(UA_NS0ID_SERVER)),
                 )
                 .await
                 .context("browse")?;

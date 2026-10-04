@@ -119,7 +119,7 @@ async fn browse_many_contd(
         .browse_many(
             &node_ids
                 .iter()
-                .map(|node_id| ua::BrowseDescription::default().with_node_id(node_id))
+                .map(|node_id| ua::BrowseDescription::default().with_node_id(node_id.clone()))
                 .collect::<Vec<_>>(),
         )
         .await?;

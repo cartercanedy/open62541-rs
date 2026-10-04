@@ -49,11 +49,45 @@ async fn open_server_and_connect(client_strategy: ClientStrategy) {
         .as_str()
         .expect("valid discovery URL");
 
+    let endpoints = ClientBuilder::default()
+        .get_endpoints(discovery_url)
+        .expect("discover endpoints");
+    assert!(!endpoints.is_empty());
+    drop(endpoints);
+    let targets = server
+        .browse_recursive(
+            &ua::BrowseDescription::default()
+                .with_node_id(ua::NodeId::ns0(open62541_sys::UA_NS0ID_SERVER_SERVERSTATUS)),
+        )
+        .expect("browse server status recursively");
+    assert!(!targets.is_empty());
+    drop(targets);
+
     // Connect to given URL.
     let client = ClientBuilder::default()
         .connect(discovery_url)
         .expect("connect client")
         .into_async();
+
+    let node_class = client
+        .read_attribute(
+            &ua::NodeId::ns0(UA_NS0ID_SERVER_SERVERSTATUS_BUILDINFO_PRODUCTNAME),
+            ua::AttributeId::NODECLASS_T,
+        )
+        .await
+        .expect("read node class");
+    assert!(
+        node_class
+            .value()
+            .unwrap()
+            .to_scalar::<ua::Int32>()
+            .is_some()
+    );
+    assert_eq!(node_class.scalar_value(), Some(&ua::NodeClass::VARIABLE));
+    assert_eq!(
+        node_class.into_scalar_value(),
+        Some(ua::NodeClass::VARIABLE)
+    );
 
     let value = client
         .read_value(&ua::NodeId::ns0(

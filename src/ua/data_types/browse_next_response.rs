@@ -1,12 +1,9 @@
 use crate::{DataType as _, ServiceResponse, ua};
 
-crate::data_type!(BrowseNextResponse);
-
-impl BrowseNextResponse {
-    #[must_use]
-    pub fn results(&self) -> Option<ua::Array<ua::BrowseResult>> {
-        // TODO: Adjust signature to return non-owned value instead.
-        ua::Array::from_raw_parts(self.0.resultsSize, self.0.results)
+crate::data_type::ua_struct! {
+    pub struct BrowseNextResponse {
+        results: [ua::BrowseResult],
+        responseHeader: &ua::ResponseHeader
     }
 }
 

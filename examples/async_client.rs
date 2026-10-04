@@ -3,8 +3,8 @@ use std::{num::NonZero, time::Duration};
 use anyhow::{Context as _, bail};
 use futures::future;
 use open62541::{
-    AsyncClient, AsyncMonitoredItem, ClientBuilder, DataType, MonitoredItemCreateRequestBuilder,
-    SubscriptionBuilder, ua,
+    AsyncClient, AsyncMonitoredItem, ClientBuilder, DataType, FilterOperand as _,
+    MonitoredItemCreateRequestBuilder, SubscriptionBuilder, ua,
 };
 use open62541_sys::{
     UA_NS0ID_BASEEVENTTYPE, UA_NS0ID_BASEMODELCHANGEEVENTTYPE, UA_NS0ID_SERVER,
@@ -103,26 +103,36 @@ async fn subscribe_node_events(client: &AsyncClient) -> anyhow::Result<()> {
         .attribute(ua::AttributeId::EVENTNOTIFIER_T)
         .filter(
             ua::EventFilter::init()
-                .with_select_clauses(&[
-                    ua::SimpleAttributeOperand::init()
-                        .with_type_definition_id(ua::NodeId::ns0(UA_NS0ID_BASEEVENTTYPE))
-                        .with_browse_path(&[ua::QualifiedName::new(0, "Change")])
-                        .with_attribute_id(&ua::AttributeId::VALUE),
-                    ua::SimpleAttributeOperand::init()
-                        .with_type_definition_id(ua::NodeId::ns0(UA_NS0ID_BASEEVENTTYPE))
-                        .with_browse_path(&[ua::QualifiedName::new(0, "EventType")])
-                        .with_attribute_id(&ua::AttributeId::VALUE),
-                    ua::SimpleAttributeOperand::init()
-                        .with_type_definition_id(ua::NodeId::ns0(UA_NS0ID_BASEEVENTTYPE))
-                        .with_browse_path(&[ua::QualifiedName::new(0, "SourceNode")])
-                        .with_attribute_id(&ua::AttributeId::VALUE),
-                ])
+                .with_select_clauses(
+                    [
+                        ua::SimpleAttributeOperand::init()
+                            .with_type_definition_id(ua::NodeId::ns0(UA_NS0ID_BASEEVENTTYPE))
+                            .with_browse_path([ua::QualifiedName::new(0, "Change")].into())
+                            .with_attribute_id(ua::AttributeId::VALUE),
+                        ua::SimpleAttributeOperand::init()
+                            .with_type_definition_id(ua::NodeId::ns0(UA_NS0ID_BASEEVENTTYPE))
+                            .with_browse_path([ua::QualifiedName::new(0, "EventType")].into())
+                            .with_attribute_id(ua::AttributeId::VALUE),
+                        ua::SimpleAttributeOperand::init()
+                            .with_type_definition_id(ua::NodeId::ns0(UA_NS0ID_BASEEVENTTYPE))
+                            .with_browse_path([ua::QualifiedName::new(0, "SourceNode")].into())
+                            .with_attribute_id(ua::AttributeId::VALUE),
+                    ]
+                    .into(),
+                )
                 .with_where_clause(
-                    ua::ContentFilter::init().with_elements(&[ua::ContentFilterElement::init()
-                        .with_filter_operator(ua::FilterOperator::OFTYPE)
-                        .with_filter_operands(&[ua::LiteralOperand::new(ua::Variant::scalar(
-                            ua::NodeId::ns0(UA_NS0ID_BASEMODELCHANGEEVENTTYPE),
-                        ))])]),
+                    ua::ContentFilter::init().with_elements(
+                        [ua::ContentFilterElement::init()
+                            .with_filter_operator(ua::FilterOperator::OFTYPE)
+                            .with_filter_operands(
+                                [ua::LiteralOperand::new(ua::Variant::scalar(ua::NodeId::ns0(
+                                    UA_NS0ID_BASEMODELCHANGEEVENTTYPE,
+                                )))
+                                .to_extension_object()]
+                                .into(),
+                            )]
+                        .into(),
+                    ),
                 ),
         );
     let results = AsyncMonitoredItem::create(&subscription, request_builder)
@@ -253,7 +263,7 @@ async fn browse_node(client: &AsyncClient) -> anyhow::Result<()> {
     let (references, _) = client
         .browse(
             &ua::BrowseDescription::default()
-                .with_node_id(&ua::NodeId::ns0(UA_NS0ID_SERVER_SERVERSTATUS)),
+                .with_node_id(ua::NodeId::ns0(UA_NS0ID_SERVER_SERVERSTATUS)),
         )
         .await
         .context("browse node")?;

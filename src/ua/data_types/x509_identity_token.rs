@@ -1,24 +1,14 @@
-use crate::{DataType as _, ua};
+use crate::ua;
 
-crate::data_type!(X509IdentityToken);
+crate::data_type::ua_struct! {
+    pub struct X509IdentityToken {
+        policyId: &ua::String,
+        /// Certificate bytes must be DER encoded.
+        certificateData: &ua::ByteString
+    }
+}
 
 impl X509IdentityToken {
-    /// Sets policy ID.
-    #[must_use]
-    pub fn with_policy_id(mut self, policy_id: ua::String) -> Self {
-        policy_id.move_into_raw(&mut self.0.policyId);
-        self
-    }
-
-    /// Sets certificate data ([DER] format).
-    ///
-    /// [DER]: https://en.wikipedia.org/wiki/X.690#DER_encoding
-    #[must_use]
-    pub fn with_certificate_data(mut self, certificate_data: ua::ByteString) -> Self {
-        certificate_data.move_into_raw(&mut self.0.certificateData);
-        self
-    }
-
     /// Sets certificate data.
     ///
     /// This handles certificates in both [DER] and [PEM] format.

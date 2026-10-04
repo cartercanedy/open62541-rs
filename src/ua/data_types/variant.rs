@@ -1,13 +1,15 @@
 use std::ffi::c_void;
 
 use open62541_sys::{
-    UA_Variant_clear, UA_Variant_hasArrayType, UA_Variant_hasScalarType, UA_Variant_isEmpty,
-    UA_Variant_isScalar, UA_Variant_setArray, UA_Variant_setScalar, UA_Variant_setScalarCopy,
+    UA_DataTypeKind, UA_Variant_hasArrayType, UA_Variant_isEmpty, UA_Variant_isScalar,
+    UA_Variant_setArray, UA_Variant_setScalar, UA_VariantStorageType,
 };
 
 use crate::{DataType, NonScalarValue, ScalarValue, ValueType, VariantValue, ua};
 
-crate::data_type!(Variant);
+crate::data_type::ua_struct! {
+    pub struct Variant;
+}
 
 impl Variant {
     /// Creates variant from scalar.
@@ -41,20 +43,24 @@ impl Variant {
         variant
     }
 
+    /// Replaces the contents with an owned scalar without cloning its payload.
     #[must_use]
-    pub fn with_scalar<T: DataType>(mut self, value: &T) -> Self {
-        // The call to `UA_Variant_setScalarCopy()` does not free held memory which would lead to a
-        // memory leak. We must clear the variant manually to handle the case where `with_scalar()`
-        // is called multiple times on the same `Variant`.
-        unsafe {
-            UA_Variant_clear(self.as_mut_ptr());
-            UA_Variant_setScalarCopy(
-                self.as_mut_ptr(),
-                value.as_ptr().cast::<c_void>(),
-                T::data_type(),
-            );
+    pub fn with_scalar<T: DataType>(self, value: T) -> Self {
+        if self.0.storageType == UA_VariantStorageType::UA_VARIANT_DATA
+            && self.0.type_ == T::data_type()
+            && self.0.arrayDimensionsSize == 0
+            && self.0.arrayDimensions.is_null()
+            && self.is_scalar()
+        {
+            // SAFETY: The scalar is exclusively owned and its exact descriptor describes T::Inner.
+            // Replacing its contents preserves the existing native allocation and descriptor.
+            let target = unsafe { &mut *self.0.data.cast::<T::Inner>() };
+            value.move_into_raw(target);
+            return self;
         }
-        self
+
+        drop(self);
+        Self::scalar(value)
     }
 
     /// Gets data type's node ID.
@@ -68,10 +74,23 @@ impl Variant {
 
     /// Gets value type.
     ///
+    /// Protocol enums are reported as [`ValueType::Enumeration`] and can be extracted as
+    /// [`ua::Enumeration`]. Use [`Self::type_id()`] for the concrete native datatype identity.
+    /// Int32 values decoded from the wire retain [`ValueType::Int32`].
+    ///
     /// Returns `None` when the variant is empty.
     #[must_use]
     pub fn value_type(&self) -> Option<ValueType> {
-        self.type_id().map(ValueType::from_data_type)
+        let data_type = unsafe { self.0.type_.as_ref() }?;
+        Some(
+            if data_type.typeKind()
+                == u32::from_ne_bytes(UA_DataTypeKind::UA_DATATYPEKIND_ENUM.0.to_ne_bytes())
+            {
+                ValueType::Enumeration
+            } else {
+                ValueType::from_data_type(ua::NodeId::raw_ref(&data_type.typeId))
+            },
+        )
     }
 
     #[must_use]
@@ -89,21 +108,27 @@ impl Variant {
     where
         T: DataType,
     {
+        T::borrow_from_variant(self)
+    }
+
+    pub(crate) fn as_scalar_matching<T: DataType>(&self) -> Option<&T> {
         self.scalar_data::<T>()
             // SAFETY: Inner pointer holds valid data.
             .and_then(|data| unsafe { data.as_ref() })
             .map(T::raw_ref)
     }
 
+    /// Copies a supported scalar or constructs it through a custom copying conversion.
+    ///
+    /// The default checks the representation before cloning the scalar payload. Custom conversions
+    /// use [`DataType::try_clone_from_variant()`] rather than cloning the input for consuming
+    /// extraction. Extracting `Variant` itself copies its contents, including empty and array values.
     #[must_use]
     pub fn to_scalar<T>(&self) -> Option<T>
     where
         T: DataType,
     {
-        self.scalar_data::<T>()
-            // SAFETY: Inner pointer holds valid data.
-            .and_then(|data| unsafe { data.as_ref() })
-            .map(T::clone_raw)
+        T::try_clone_from_variant(self).ok()
     }
 
     #[must_use]
@@ -111,15 +136,46 @@ impl Variant {
     where
         T: DataType,
     {
-        self.scalar_data::<T>()
-            // SAFETY: Inner pointer holds valid data and we have exclusive access through `self`.
-            .and_then(|data| unsafe { data.cast_mut().as_mut() })
+        self.try_into_scalar().ok()
+    }
+
+    /// Extracts a scalar of the requested type.
+    ///
+    /// # Errors
+    ///
+    /// The default extraction returns `BadTypeMismatch` when the value is empty, has the wrong
+    /// shape, or has an incompatible type. Extracting `Variant` itself passes through any contents,
+    /// including empty and array values. Errors from a target's custom conversion hook are
+    /// propagated unchanged.
+    pub fn try_into_scalar<T: DataType>(self) -> crate::Result<T> {
+        T::try_from_variant(self)
+    }
+
+    pub(crate) fn try_into_scalar_matching<T: DataType>(mut self) -> crate::Result<T> {
+        if self.0.storageType == UA_VariantStorageType::UA_VARIANT_DATA_NODELETE {
+            return self
+                .as_scalar_matching::<T>()
+                .cloned()
+                .ok_or_else(|| crate::Error::new(ua::StatusCode::BADTYPEMISMATCH));
+        }
+        let data = if self.is_scalar() && T::accepts_variant_type(self.0.type_) {
+            self.0.data.cast::<T::Inner>()
+        } else if T::data_type() == Self::data_type() {
+            // Derive the inline-self pointer through mutable access, not scalar_data(&self).
+            unsafe { self.as_mut_ptr().cast::<T::Inner>() }
+        } else {
+            return Err(crate::Error::new(ua::StatusCode::BADTYPEMISMATCH));
+        };
+        // SAFETY: DATA storage is owned. The matching descriptor permits the payload view;
+        // the Variant-self fallback instead points to this exclusively borrowed wrapper.
+        unsafe { data.as_mut() }
             .map(T::take_raw)
+            .ok_or_else(|| crate::Error::new(ua::StatusCode::BADTYPEMISMATCH))
     }
 
     #[must_use]
     fn scalar_data<T: DataType>(&self) -> Option<*const T::Inner> {
-        if unsafe { UA_Variant_hasScalarType(self.as_ptr(), T::data_type()) } {
+        if unsafe { UA_Variant_isScalar(self.as_ptr()) } && T::accepts_variant_type(self.0.type_) {
             Some(self.0.data.cast::<T::Inner>())
         } else {
             if T::data_type() != Self::data_type() {
@@ -134,7 +190,14 @@ impl Variant {
 
     #[must_use]
     pub fn to_array<T: DataType>(&self) -> Option<ua::Array<T>> {
-        if !unsafe { UA_Variant_hasArrayType(self.as_ptr(), T::data_type()) } {
+        T::array_from_variant(self)
+    }
+
+    pub(crate) fn to_array_matching<T: DataType>(&self) -> Option<ua::Array<T>> {
+        let matches = !unsafe { UA_Variant_isScalar(self.as_ptr()) }
+            && !self.0.type_.is_null()
+            && T::accepts_variant_type(self.0.type_);
+        if !matches {
             // Special case: open62541 automatically converts arrays of extension objects into the
             // contained data type (as of version 1.4). This only works for non-empty arrays since
             // the element type needs to be known.
@@ -163,6 +226,13 @@ impl Variant {
         if !self.is_scalar() {
             // TODO: Handle non-scalar (array) values.
             return VariantValue::NonScalar(NonScalarValue);
+        }
+
+        if self.has_enum_type() {
+            return VariantValue::Scalar(
+                self.to_scalar::<ua::Enumeration>()
+                    .map_or(ScalarValue::Unsupported, ScalarValue::Enumeration),
+            );
         }
 
         macro_rules! check {
@@ -198,11 +268,18 @@ impl Variant {
             QualifiedName(ua::QualifiedName),   // Data type ns=0;i=20
             LocalizedText(ua::LocalizedText),   // Data type ns=0;i=21
             Structure(ua::ExtensionObject),     // Data type ns=0;i=22
-            Enumeration(ua::Enumeration),       // Data type ns=0;i=29
             Argument(ua::Argument),             // Data type ns=0;i=296
         );
 
         VariantValue::Scalar(ScalarValue::Unsupported)
+    }
+
+    pub(crate) fn has_enum_type(&self) -> bool {
+        // SAFETY: Non-null Variant descriptors are valid static datatype records.
+        unsafe { self.0.type_.as_ref() }.is_some_and(|data_type| {
+            data_type.typeKind()
+                == u32::from_ne_bytes(UA_DataTypeKind::UA_DATATYPEKIND_ENUM.0.to_ne_bytes())
+        })
     }
 
     #[cfg(feature = "serde")]
@@ -218,6 +295,20 @@ impl serde::Serialize for Variant {
     where
         S: serde::Serializer,
     {
+        if self.has_enum_type() {
+            if self.is_scalar() {
+                // SAFETY: Scalar ENUM storage is an initialized, aligned 32-bit integer.
+                return serializer.serialize_i32(unsafe { *self.0.data.cast::<i32>() });
+            }
+            // SAFETY: ENUM elements have Int32 layout and validity. The helper handles null
+            // and empty-sentinel storage before constructing a slice, borrowed only for this call.
+            let values = unsafe {
+                ua::Array::<ua::Int32>::slice_from_raw_parts(self.0.arrayLength, self.0.data.cast())
+            }
+            .ok_or_else(|| serde::ser::Error::custom("non-primitive value in Variant"))?;
+            return serde::Serialize::serialize(values, serializer);
+        }
+
         macro_rules! serialize {
             ($self:ident, $serializer:ident, [$( $( #[cfg($cfg: meta)] )? $name:ident ),* $(,)?] $(,)?) => {
                 $(
@@ -268,7 +359,7 @@ impl serde::Serialize for Variant {
         // - QualifiedName,  // Data type ns=0;i=20
         // - LocalizedText,  // Data type ns=0;i=21
         // - Structure,      // Data type ns=0;i=22
-        // - Enumeration,    // Data type ns=0;i=29
+        // Native enums, including Enumeration, are handled above as Int32 values.
         // - Argument,       // Data type ns=0;i=296
 
         Err(serde::ser::Error::custom("non-primitive value in Variant"))

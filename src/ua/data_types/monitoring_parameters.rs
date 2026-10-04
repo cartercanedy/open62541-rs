@@ -1,8 +1,21 @@
 use std::time::Duration;
 
-use crate::{DataType as _, MonitoringFilter};
+use crate::ua;
 
-crate::data_type!(MonitoringParameters);
+crate::data_type::ua_struct! {
+    pub struct MonitoringParameters {
+        filter: &ua::ExtensionObject,
+        #[builder(skip)]
+        #[skip(uses = Self::sampling_interval)]
+        samplingInterval: f64,
+        queueSize: u32,
+        /// When the queue is full, `true` discards the oldest notification.
+        /// `false` replaces the newest queued notification.
+        discardOldest: bool,
+        /// The native client assigns its own handle when creating a monitored item.
+        clientHandle: u32
+    }
+}
 
 impl MonitoringParameters {
     /// Sets sampling interval.
@@ -22,30 +35,8 @@ impl MonitoringParameters {
         self
     }
 
-    /// Sets filter.
     #[must_use]
-    pub fn with_filter(mut self, filter: &impl MonitoringFilter) -> Self {
-        filter
-            .to_extension_object()
-            .move_into_raw(&mut self.0.filter);
-        self
-    }
-
-    /// Sets requested size of the monitored item queue.
-    #[must_use]
-    pub const fn with_queue_size(mut self, queue_size: u32) -> Self {
-        self.0.queueSize = queue_size;
-        self
-    }
-
-    /// Sets discard policy.
-    ///
-    /// When `true`, the oldest notification in the queue is discarded and the new notification is
-    /// added to the end of the queue. When `false`, the last notification added to the queue gets
-    /// replaced with the new notification.
-    #[must_use]
-    pub const fn with_discard_oldest(mut self, discard_oldest: bool) -> Self {
-        self.0.discardOldest = discard_oldest;
-        self
+    pub fn sampling_interval(&self) -> Option<Duration> {
+        Duration::try_from_secs_f64(self.0.samplingInterval / 1e3).ok()
     }
 }

@@ -4,7 +4,9 @@ use open62541_sys::{UA_ByteString_allocBuffer, UA_String_fromChars};
 
 use crate::{ArrayValue, DataType as _, Error, ua};
 
-crate::data_type!(String);
+crate::data_type::ua_struct! {
+    pub struct String;
+}
 
 // In the implementation below, remember that `self.0.data` may be `UA_EMPTY_ARRAY_SENTINEL` for any
 // strings of `length` 0. It may also be `ptr::null()` for "invalid" strings. This is similar to how

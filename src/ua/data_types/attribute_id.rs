@@ -1,40 +1,37 @@
 use std::hash;
 
-crate::data_type!(AttributeId, UInt32);
-
-crate::enum_variants!(
-    AttributeId,
-    UA_AttributeId,
-    [
-        NODEID,
-        NODECLASS,
-        BROWSENAME,
-        DISPLAYNAME,
-        DESCRIPTION,
-        WRITEMASK,
-        USERWRITEMASK,
-        ISABSTRACT,
-        SYMMETRIC,
-        INVERSENAME,
-        CONTAINSNOLOOPS,
-        EVENTNOTIFIER,
-        VALUE,
-        DATATYPE,
-        VALUERANK,
-        ARRAYDIMENSIONS,
-        ACCESSLEVEL,
-        USERACCESSLEVEL,
-        MINIMUMSAMPLINGINTERVAL,
-        HISTORIZING,
-        EXECUTABLE,
-        USEREXECUTABLE,
-        DATATYPEDEFINITION,
-        ROLEPERMISSIONS,
-        USERROLEPERMISSIONS,
-        ACCESSRESTRICTIONS,
-        ACCESSLEVELEX,
-    ],
-);
+crate::data_type::ua_enum! {
+    #[ua_inner = UInt32]
+    pub enum AttributeId {
+        NODEID = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_NODEID,
+        NODECLASS = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_NODECLASS,
+        BROWSENAME = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_BROWSENAME,
+        DISPLAYNAME = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_DISPLAYNAME,
+        DESCRIPTION = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_DESCRIPTION,
+        WRITEMASK = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_WRITEMASK,
+        USERWRITEMASK = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_USERWRITEMASK,
+        ISABSTRACT = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_ISABSTRACT,
+        SYMMETRIC = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_SYMMETRIC,
+        INVERSENAME = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_INVERSENAME,
+        CONTAINSNOLOOPS = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_CONTAINSNOLOOPS,
+        EVENTNOTIFIER = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_EVENTNOTIFIER,
+        VALUE = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_VALUE,
+        DATATYPE = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_DATATYPE,
+        VALUERANK = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_VALUERANK,
+        ARRAYDIMENSIONS = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_ARRAYDIMENSIONS,
+        ACCESSLEVEL = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_ACCESSLEVEL,
+        USERACCESSLEVEL = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_USERACCESSLEVEL,
+        MINIMUMSAMPLINGINTERVAL = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_MINIMUMSAMPLINGINTERVAL,
+        HISTORIZING = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_HISTORIZING,
+        EXECUTABLE = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_EXECUTABLE,
+        USEREXECUTABLE = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_USEREXECUTABLE,
+        DATATYPEDEFINITION = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_DATATYPEDEFINITION,
+        ROLEPERMISSIONS = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_ROLEPERMISSIONS,
+        USERROLEPERMISSIONS = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_USERROLEPERMISSIONS,
+        ACCESSRESTRICTIONS = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_ACCESSRESTRICTIONS,
+        ACCESSLEVELEX = open62541_sys::UA_AttributeId::UA_ATTRIBUTEID_ACCESSLEVELEX,
+    }
+}
 
 impl hash::Hash for AttributeId {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {

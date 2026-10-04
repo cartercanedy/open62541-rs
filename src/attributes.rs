@@ -69,6 +69,6 @@ impl Attribute for &ua::AttributeId {
     type Value = ua::Variant;
 
     fn id(&self) -> ua::AttributeId {
-        (*self).clone()
+        **self
     }
 }

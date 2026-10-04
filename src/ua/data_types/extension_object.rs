@@ -2,9 +2,18 @@ use std::ffi::c_void;
 
 use open62541_sys::{UA_ExtensionObject_setValueCopy, UA_ExtensionObjectEncoding};
 
-use crate::{DataType, ua};
+use crate::{
+    DataType,
+    ua::{self, data_types::extension_object_encoding::ExtensionObjectEncoding},
+};
 
-crate::data_type!(ExtensionObject);
+crate::data_type::ua_struct! {
+    pub struct ExtensionObject {
+        #[builder(skip)]
+        #[enum_copy]
+        encoding: ua::ExtensionObjectEncoding
+    }
+}
 
 impl ExtensionObject {
     /// Creates extension object from value.
@@ -29,12 +38,13 @@ impl ExtensionObject {
 
     /// Gets encoded type ID.
     #[must_use]
-    pub fn encoded_type_id(&self) -> Option<&ua::NodeId> {
+    pub const fn encoded_type_id(&self) -> Option<&ua::NodeId> {
         if !matches!(
-            self.0.encoding,
-            UA_ExtensionObjectEncoding::UA_EXTENSIONOBJECT_ENCODED_NOBODY
-                | UA_ExtensionObjectEncoding::UA_EXTENSIONOBJECT_ENCODED_BYTESTRING
-                | UA_ExtensionObjectEncoding::UA_EXTENSIONOBJECT_ENCODED_XML
+            // SAFETY: Reading the integer-backed encoding has no extra preconditions.
+            unsafe { self.encoding().as_u32_unchecked() },
+            ExtensionObjectEncoding::ENCODED_NOBODY_U32
+                | ExtensionObjectEncoding::ENCODED_BYTESTRING_U32
+                | ExtensionObjectEncoding::ENCODED_XML_U32
         ) {
             return None;
         }
@@ -42,7 +52,7 @@ impl ExtensionObject {
         // SAFETY: Encoding indicates encoded object, union variant is valid.
         let encoded_content = unsafe { self.0.content.encoded.as_ref() };
 
-        Some(ua::NodeId::raw_ref(&encoded_content.typeId))
+        Some(crate::data_type::data_type_ref(&encoded_content.typeId))
     }
 
     /// Gets encoded byte string content.

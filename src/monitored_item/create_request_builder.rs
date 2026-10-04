@@ -87,7 +87,7 @@ impl<K: MonitoredItemKind> MonitoredItemCreateRequestBuilder<K> {
     ///
     /// Default value is [`ua::AttributeId::VALUE`].
     ///
-    /// See [`ua::MonitoredItemCreateRequest::with_attribute_id()`].
+    /// See [`ua::ReadValueId::with_attribute_id()`].
     //
     // TODO: Add examples like forAsyncMonitoredItemBuilder.
     #[must_use]
@@ -124,7 +124,7 @@ impl<K: MonitoredItemKind> MonitoredItemCreateRequestBuilder<K> {
     ///
     /// See [`ua::MonitoredItemCreateRequest::with_monitoring_mode()`].
     #[must_use]
-    pub fn monitoring_mode(mut self, monitoring_mode: ua::MonitoringMode) -> Self {
+    pub const fn monitoring_mode(mut self, monitoring_mode: ua::MonitoringMode) -> Self {
         self.monitoring_mode = Some(monitoring_mode);
         self
     }
@@ -208,33 +208,39 @@ impl<K: MonitoredItemKind> MonitoredItemCreateRequestBuilder<K> {
         let items_to_create = node_ids
             .into_iter()
             .map(|node_id| {
-                let mut request = ua::MonitoredItemCreateRequest::default()
-                    .with_node_id(&node_id)
-                    .with_attribute_id(&attribute_id);
+                let item = ua::ReadValueId::init()
+                    .with_node_id(node_id)
+                    .with_attribute_id(attribute_id);
+                let mut request =
+                    ua::MonitoredItemCreateRequest::default().with_item_to_monitor(item);
+                let mut parameters = std::mem::replace(
+                    request.requested_parameters_mut(),
+                    ua::MonitoringParameters::init(),
+                );
 
                 if let Some(monitoring_mode) = monitoring_mode.as_ref() {
-                    request = request.with_monitoring_mode(monitoring_mode);
+                    request = request.with_monitoring_mode(monitoring_mode.clone());
                 }
                 if let Some(&sampling_interval) = sampling_interval.as_ref() {
-                    request = request.with_sampling_interval(sampling_interval);
+                    parameters = parameters.with_sampling_interval(sampling_interval);
                 }
                 if let Some(filter) = filter.as_ref() {
-                    request = request.with_filter(filter);
+                    parameters = parameters.with_filter(filter.to_extension_object());
                 }
                 if let Some(&queue_size) = queue_size.as_ref() {
-                    request = request.with_queue_size(queue_size);
+                    parameters = parameters.with_queue_size(queue_size);
                 }
                 if let Some(&discard_oldest) = discard_oldest.as_ref() {
-                    request = request.with_discard_oldest(discard_oldest);
+                    parameters = parameters.with_discard_oldest(discard_oldest);
                 }
 
-                request
+                request.with_requested_parameters(parameters)
             })
-            .collect::<Vec<_>>();
+            .collect::<ua::Array<_>>();
 
         ua::CreateMonitoredItemsRequest::init()
             .with_subscription_id(subscription_id)
-            .with_items_to_create(&items_to_create)
+            .with_items_to_create(items_to_create)
     }
 }
 
@@ -264,5 +270,52 @@ impl<K: MonitoredItemKind> From<crate::async_monitored_item::MonitoredItemBuilde
             discard_oldest,
             _kind: PhantomData,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn owned_child_builders_preserve_native_defaults_and_move_node_ids() {
+        let node_id = ua::NodeId::string(1, "monitored node");
+        let pointer = node_id.as_string().unwrap().1.as_bytes().unwrap().as_ptr();
+        let subscription = ua::SubscriptionId::new(ua::IntegerId::from_u32(1).unwrap());
+        let request = MonitoredItemCreateRequestBuilder::new([node_id]).build(subscription);
+        let item = request.items_to_create().unwrap().first().unwrap();
+        let defaults = ua::MonitoredItemCreateRequest::default();
+        assert_eq!(item.requested_parameters(), defaults.requested_parameters());
+        assert_eq!(item.monitoring_mode(), defaults.monitoring_mode());
+        assert_eq!(
+            item.item_to_monitor().attribute_id(),
+            ua::AttributeId::VALUE
+        );
+        assert_eq!(
+            item.item_to_monitor()
+                .node_id()
+                .as_string()
+                .unwrap()
+                .1
+                .as_bytes()
+                .unwrap()
+                .as_ptr(),
+            pointer,
+        );
+
+        let request = MonitoredItemCreateRequestBuilder::new([ua::NodeId::ns0(42)])
+            .sampling_interval(None)
+            .queue_size(3)
+            .discard_oldest(false)
+            .build(subscription);
+        let parameters = request
+            .items_to_create()
+            .unwrap()
+            .first()
+            .unwrap()
+            .requested_parameters();
+        assert_eq!(parameters.sampling_interval(), None);
+        assert_eq!(parameters.queue_size(), 3);
+        assert!(!parameters.discard_oldest());
     }
 }

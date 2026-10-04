@@ -1,14 +1,17 @@
+//! Wrapper for security level from [`open62541_sys`].
 use open62541_sys::UA_Byte;
 
 use crate::ua;
 
-/// Wrapper for security level from [`open62541_sys`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SecurityLevel(UA_Byte);
+crate::data_type::ua_alias! {
+    #[serialize_as(Byte)]
+    #[derive(Hash)]
+    pub struct SecurityLevel;
+}
 
 impl SecurityLevel {
     #[must_use]
-    pub(crate) const fn new(security_level: UA_Byte) -> Self {
+    pub const fn new(security_level: UA_Byte) -> Self {
         Self(security_level)
     }
 

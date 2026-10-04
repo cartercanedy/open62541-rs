@@ -38,7 +38,7 @@ fn main() -> anyhow::Result<()> {
         browse_name: ua::QualifiedName::new(1, "the answer"),
         type_definition: ua::NodeId::ns0(UA_NS0ID_BASEDATAVARIABLETYPE),
         attributes: ua::VariableAttributes::default()
-            .with_data_type(&ua::NodeId::ns0(UA_NS0ID_STRING)),
+            .with_data_type(ua::NodeId::ns0(UA_NS0ID_STRING)),
     };
     let value_node_id = server.add_variable_node(value_node)?;
 
@@ -74,7 +74,7 @@ fn main() -> anyhow::Result<()> {
         reference_type_id: ua::NodeId::ns0(UA_NS0ID_ORGANIZES),
         browse_name: ua::QualifiedName::new(1, "the answer.data.value"),
         type_definition: ua::NodeId::ns0(UA_NS0ID_BASEDATAVARIABLETYPE),
-        attributes: ua::VariableAttributes::default().with_data_type(&custom_string_type_id),
+        attributes: ua::VariableAttributes::default().with_data_type(custom_string_type_id),
     };
 
     let data_value_node_id = server.add_variable_node(data_value_node)?;
@@ -82,7 +82,7 @@ fn main() -> anyhow::Result<()> {
     server.write_data_value(
         &data_value_node_id,
         &ua::DataValue::new(ua::Variant::scalar(ua::String::new("foobar")?))
-            .with_source_timestamp(&utc_datetime!(2024-02-09 12:34:56).try_into()?),
+            .with_source_timestamp(utc_datetime!(2024-02-09 12:34:56).try_into()?),
     )?;
 
     read_attribute(&server, &data_value_node_id, ua::AttributeId::NODEID_T);

@@ -50,11 +50,14 @@
 //!
 //! Subscribe to a node's value by creating a subscription with
 //! [`AsyncClient::create_subscription()`] and adding monitored items to it with
-//! [`AsyncSubscription::create_monitored_item()`]:
+//! [`AsyncSubscription::create_monitored_item()`]. The `next()` convenience method requires
+//! the `tokio` feature:
 //!
 //! ```no_run
+//! # #[cfg(feature = "tokio")]
 //! # use open62541::{AsyncClient, ua};
 //! #
+//! # #[cfg(feature = "tokio")]
 //! # #[tokio::main]
 //! # async fn main() -> anyhow::Result<()> {
 //! #
@@ -73,6 +76,8 @@
 //! #
 //! # Ok(())
 //! # }
+//! # #[cfg(not(feature = "tokio"))]
+//! # fn main() {}
 //! ```
 //!
 //! ## Server: Run server
@@ -130,7 +135,7 @@
 //!     browse_name: ua::QualifiedName::new(1, "SomeVariable"),
 //!     type_definition: ua::NodeId::ns0(UA_NS0ID_BASEDATAVARIABLETYPE),
 //!     attributes: ua::VariableAttributes::default()
-//!         .with_data_type(&ua::NodeId::ns0(UA_NS0ID_STRING)),
+//!         .with_data_type(ua::NodeId::ns0(UA_NS0ID_STRING)),
 //! })?;
 //!
 //! server.write_value(
@@ -191,9 +196,9 @@
 //!     browse_name: ua::QualifiedName::new(1, "SomeVariable"),
 //!     type_definition: ua::NodeId::ns0(UA_NS0ID_BASEDATAVARIABLETYPE),
 //!     attributes: ua::VariableAttributes::default()
-//!         .with_data_type(&ua::NodeId::ns0(UA_NS0ID_STRING))
+//!         .with_data_type(ua::NodeId::ns0(UA_NS0ID_STRING))
 //!         .with_access_level(
-//!             &ua::AccessLevelType::NONE
+//!             ua::AccessLevelType::NONE
 //!                 .with_current_read(true)
 //!                 .with_current_write(true),
 //!         ),
@@ -263,9 +268,7 @@ pub use self::{
 use self::{
     callback_fn::CallbackMut,
     client::ClientContext,
-    data_type::{bitmask_ops, data_type, enum_variants},
     monitored_item::create_monitored_items_callback,
-    ua::UaIterExt,
     value::{ArrayValue, NonScalarValue},
 };
 #[cfg(feature = "mbedtls")]

@@ -1,13 +1,9 @@
-crate::data_type!(StructureType);
-
-crate::enum_variants!(
-    StructureType,
-    UA_StructureType,
-    [
-        STRUCTURE,
-        STRUCTUREWITHOPTIONALFIELDS,
-        UNION,
-        STRUCTUREWITHSUBTYPEDVALUES,
-        UNIONWITHSUBTYPEDVALUES,
-    ],
-);
+crate::data_type::ua_enum! {
+    pub enum StructureType {
+        STRUCTURE = open62541_sys::UA_StructureType::UA_STRUCTURETYPE_STRUCTURE,
+        STRUCTUREWITHOPTIONALFIELDS = open62541_sys::UA_StructureType::UA_STRUCTURETYPE_STRUCTUREWITHOPTIONALFIELDS,
+        UNION = open62541_sys::UA_StructureType::UA_STRUCTURETYPE_UNION,
+        STRUCTUREWITHSUBTYPEDVALUES = open62541_sys::UA_StructureType::UA_STRUCTURETYPE_STRUCTUREWITHSUBTYPEDVALUES,
+        UNIONWITHSUBTYPEDVALUES = open62541_sys::UA_StructureType::UA_STRUCTURETYPE_UNIONWITHSUBTYPEDVALUES,
+    }
+}

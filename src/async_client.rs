@@ -121,7 +121,7 @@ impl AsyncClient {
                 self.client.as_ptr().cast_mut(),
             )
         });
-        if let Err(error) = Error::verify_good(&status_code) {
+        if let Err(error) = Error::verify_good(status_code) {
             log::warn!("Error while disconnecting client: {error}");
         }
 
@@ -206,12 +206,10 @@ impl AsyncClient {
         node_id: &ua::NodeId,
         attribute_ids: &[ua::AttributeId],
     ) -> Result<Vec<DataValue<ua::Variant>>> {
-        // TODO: Avoid cloning, use `AsRef` in `read_many_attributes()`?
-        self.read_many_attributes(
-            &attribute_ids
+        self.read_attributes_from(
+            attribute_ids
                 .iter()
-                .map(|attribute_id| (node_id.clone(), attribute_id.clone()))
-                .collect::<Vec<_>>(),
+                .map(|&attribute_id| (node_id, attribute_id)),
         )
         .await
     }
@@ -236,24 +234,36 @@ impl AsyncClient {
         &self,
         node_attributes: &[(ua::NodeId, ua::AttributeId)],
     ) -> Result<Vec<DataValue<ua::Variant>>> {
-        let nodes_to_read = node_attributes
-            .iter()
+        self.read_attributes_from(
+            node_attributes
+                .iter()
+                .map(|(node_id, attribute_id)| (node_id, *attribute_id)),
+        )
+        .await
+    }
+
+    async fn read_attributes_from<'a>(
+        &self,
+        attributes: impl ExactSizeIterator<Item = (&'a ua::NodeId, ua::AttributeId)>,
+    ) -> Result<Vec<DataValue<ua::Variant>>> {
+        let expected_results = attributes.len();
+        let nodes_to_read = attributes
             .map(|(node_id, attribute_id)| {
                 ua::ReadValueId::init()
-                    .with_node_id(node_id)
+                    .with_node_id(node_id.clone())
                     .with_attribute_id(attribute_id)
             })
-            .collect::<Vec<_>>();
+            .collect::<ua::Array<_>>();
 
         let request = ua::ReadRequest::init()
             // TODO: Add method argument for this? We return timestamps in `DataValue` and they
             // should not end up always being `None` by default.
-            .with_timestamps_to_return(&ua::TimestampsToReturn::BOTH)
-            .with_nodes_to_read(&nodes_to_read);
+            .with_timestamps_to_return(ua::TimestampsToReturn::BOTH)
+            .with_nodes_to_read(nodes_to_read);
 
-        let response = self.service_request(request).await?;
+        let mut response = self.service_request(request).await?;
 
-        let Some(mut results) = response.results() else {
+        let Some(mut results) = response.take_results() else {
             return Err(Error::internal("read should return results"));
         };
 
@@ -264,7 +274,7 @@ impl AsyncClient {
 
         // The OPC UA specification state that the resulting list has the same number of elements as
         // the request list. If not, we would not be able to match elements in the two lists anyway.
-        if results.len() != node_attributes.len() {
+        if results.len() != expected_results {
             return Err(Error::internal("unexpected number of read results"));
         }
 
@@ -279,10 +289,13 @@ impl AsyncClient {
     pub async fn write_value(&self, node_id: &ua::NodeId, value: &ua::DataValue) -> Result<()> {
         let attribute_id = ua::AttributeId::VALUE;
 
-        let request = ua::WriteRequest::init().with_nodes_to_write(&[ua::WriteValue::init()
-            .with_node_id(node_id)
-            .with_attribute_id(&attribute_id)
-            .with_value(value)]);
+        let request = ua::WriteRequest::init().with_nodes_to_write(
+            [ua::WriteValue::init()
+                .with_node_id(node_id.clone())
+                .with_attribute_id(attribute_id)
+                .with_value(value.clone())]
+            .into(),
+        );
 
         let response = self.service_request(request).await?;
 
@@ -290,11 +303,11 @@ impl AsyncClient {
             return Err(Error::internal("write should return results"));
         };
 
-        let Some(result) = results.as_slice().first() else {
+        let Some(result) = results.first() else {
             return Err(Error::internal("write should return a result"));
         };
 
-        Error::verify_good(result)?;
+        Error::verify_good(*result)?;
 
         Ok(())
     }
@@ -311,25 +324,27 @@ impl AsyncClient {
         method_id: &ua::NodeId,
         input_arguments: &[ua::Variant],
     ) -> Result<Vec<ua::Variant>> {
-        let request =
-            ua::CallRequest::init().with_methods_to_call(&[ua::CallMethodRequest::init()
-                .with_object_id(object_id)
-                .with_method_id(method_id)
-                .with_input_arguments(input_arguments)]);
+        let request = ua::CallRequest::init().with_methods_to_call(
+            [ua::CallMethodRequest::init()
+                .with_object_id(object_id.clone())
+                .with_method_id(method_id.clone())
+                .with_input_arguments(ua::Array::from_slice(input_arguments))]
+            .into(),
+        );
 
-        let response = self.service_request(request).await?;
+        let mut response = self.service_request(request).await?;
 
-        let Some(results) = response.results() else {
+        let Some(mut results) = response.take_results() else {
             return Err(Error::internal("call should return results"));
         };
 
-        let Some(result) = results.as_slice().first() else {
+        let Some(result) = results.as_slice_mut().first_mut() else {
             return Err(Error::internal("call should return a result"));
         };
 
-        Error::verify_good(&result.status_code())?;
+        Error::verify_good(result.status_code())?;
 
-        let output_arguments = if let Some(output_arguments) = result.output_arguments() {
+        let output_arguments = if let Some(output_arguments) = result.take_output_arguments() {
             output_arguments.into_vec()
         } else {
             log::debug!("Calling {method_id} returned unset output arguments, assuming none exist");
@@ -351,7 +366,7 @@ impl AsyncClient {
     ///
     /// # async fn example(client: &AsyncClient) -> Result<()> {
     /// let node_id = ua::NodeId::ns0(UA_NS0ID_SERVER_SERVERSTATUS);
-    /// let browse_description = ua::BrowseDescription::default().with_node_id(&node_id);
+    /// let browse_description = ua::BrowseDescription::default().with_node_id(node_id);
     /// let (references, continuation_point) = client.browse(&browse_description).await?;
     /// # Ok(())
     /// # }
@@ -361,16 +376,16 @@ impl AsyncClient {
     ///
     /// This fails when the node does not exist or it cannot be browsed.
     pub async fn browse(&self, browse_description: &ua::BrowseDescription) -> BrowseResult {
-        let request =
-            ua::BrowseRequest::init().with_nodes_to_browse(slice::from_ref(browse_description));
+        let request = ua::BrowseRequest::init()
+            .with_nodes_to_browse(ua::Array::from_slice(slice::from_ref(browse_description)));
 
-        let response = self.service_request(request).await?;
+        let mut response = self.service_request(request).await?;
 
-        let Some(results) = response.results() else {
+        let Some(mut results) = response.take_results() else {
             return Err(Error::internal("browse should return results"));
         };
 
-        let Some(result) = results.as_slice().first() else {
+        let Some(result) = results.drain_all().next() else {
             return Err(Error::internal("browse should return a result"));
         };
 
@@ -394,11 +409,12 @@ impl AsyncClient {
         &self,
         browse_descriptions: &[ua::BrowseDescription],
     ) -> Result<Vec<BrowseResult>> {
-        let request = ua::BrowseRequest::init().with_nodes_to_browse(browse_descriptions);
+        let request = ua::BrowseRequest::init()
+            .with_nodes_to_browse(ua::Array::from_slice(browse_descriptions));
 
-        let response = self.service_request(request).await?;
+        let mut response = self.service_request(request).await?;
 
-        let Some(results) = response.results() else {
+        let Some(mut results) = response.take_results() else {
             return Err(Error::internal("browse should return results"));
         };
 
@@ -409,7 +425,7 @@ impl AsyncClient {
         }
 
         let results: Vec<_> = results
-            .iter()
+            .drain_all()
             .zip(browse_descriptions)
             .map(|(result, browse_description)| {
                 to_browse_result(result, Some(browse_description.node_id()))
@@ -438,11 +454,12 @@ impl AsyncClient {
         &self,
         continuation_points: &[ua::ContinuationPoint],
     ) -> Result<Vec<BrowseResult>> {
-        let request = ua::BrowseNextRequest::init().with_continuation_points(continuation_points);
+        let request = ua::BrowseNextRequest::init()
+            .with_continuation_points(ua::Array::from_slice(continuation_points));
 
-        let response = self.service_request(request).await?;
+        let mut response = self.service_request(request).await?;
 
-        let Some(results) = response.results() else {
+        let Some(mut results) = response.take_results() else {
             return Err(Error::internal("browse should return results"));
         };
 
@@ -453,7 +470,7 @@ impl AsyncClient {
         }
 
         let results: Vec<_> = results
-            .iter()
+            .drain_all()
             .map(|result| to_browse_result(result, None))
             .collect();
 
@@ -547,7 +564,7 @@ impl AsyncClient {
         // The request itself fails when the client is not connected (or the secure session has not been
         // established). In all other cases, `open62541` processes the request first and then may reject
         // it only through the response when executing our callback above.
-        Error::verify_good(&status_code).inspect_err(|_| {
+        Error::verify_good(status_code).inspect_err(|_| {
             log::warn!("{} failed: {status_code:?}", R::type_name());
         })?;
 
@@ -827,9 +844,9 @@ fn background_task(client: &ua::Client, state: &AtomicU8) {
         let time_taken = start_of_iteration.elapsed();
         log::trace!("Iterate run took {time_taken:?}");
 
-        if let Err(error) = Error::verify_good(&connect_status) {
+        if let Err(error) = Error::verify_good(connect_status) {
             let not_connected = matches!(
-                connect_status.clone().into_raw(),
+                connect_status.code(),
                 UA_STATUSCODE_BADDISCONNECT
                     | UA_STATUSCODE_BADCONNECTIONCLOSED
                     | UA_STATUSCODE_BADCONNECTIONREJECTED
@@ -867,12 +884,12 @@ fn background_task(client: &ua::Client, state: &AtomicU8) {
 }
 
 /// Converts [`ua::BrowseResult`] to our public result type.
-fn to_browse_result(result: &ua::BrowseResult, node_id: Option<&ua::NodeId>) -> BrowseResult {
+fn to_browse_result(mut result: ua::BrowseResult, node_id: Option<&ua::NodeId>) -> BrowseResult {
     // Make sure to verify the inner status code inside `BrowseResult`. The service request finishes
     // without error, even when browsing the node has failed.
-    Error::verify_good(&result.status_code())?;
+    Error::verify_good(result.status_code())?;
 
-    let references = if let Some(references) = result.references() {
+    let references = if let Some(references) = result.take_references() {
         references.into_vec()
     } else {
         // When no references exist, some OPC UA servers do not return an empty references array but
@@ -888,5 +905,63 @@ fn to_browse_result(result: &ua::BrowseResult, node_id: Option<&ua::NodeId>) -> 
         Vec::new()
     };
 
-    Ok((references, result.continuation_point()))
+    Ok((references, result.take_continuation_point()))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{DataType as _, ua};
+
+    use super::to_browse_result;
+
+    #[test]
+    fn browse_conversion_moves_reference_and_continuation_payloads() {
+        let mut reference = ua::ReferenceDescription::init();
+        // SAFETY: The initialized reference owns this field and receives a valid owned value.
+        unsafe {
+            reference.as_mut().browseName = ua::QualifiedName::new(1, "child").into_raw();
+        }
+
+        let references = ua::Array::from_slice(&[reference]);
+        let name_pointer = references
+            .as_slice()
+            .first()
+            .unwrap()
+            .browse_name()
+            .name()
+            .as_str()
+            .unwrap()
+            .as_ptr();
+        let continuation = ua::ByteString::new(b"next page");
+        let continuation_pointer = continuation.as_bytes().unwrap().as_ptr();
+        let mut result = ua::BrowseResult::init();
+
+        // SAFETY: The initialized result uniquely owns both target fields.
+        let raw = unsafe { result.as_mut() };
+        references.move_into_raw(&mut raw.referencesSize, &mut raw.references);
+        continuation.move_into_raw(&mut raw.continuationPoint);
+
+        let (references, continuation) = to_browse_result(result, None).unwrap();
+
+        assert_eq!(
+            references
+                .first()
+                .unwrap()
+                .browse_name()
+                .name()
+                .as_str()
+                .unwrap()
+                .as_ptr(),
+            name_pointer,
+        );
+        assert_eq!(
+            continuation
+                .unwrap()
+                .as_byte_string()
+                .as_bytes()
+                .unwrap()
+                .as_ptr(),
+            continuation_pointer,
+        );
+    }
 }

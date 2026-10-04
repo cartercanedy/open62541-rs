@@ -1,31 +1,10 @@
-use crate::{DataType as _, ServiceRequest, UaIterExt as _, ua};
+use crate::{DataType as _, ServiceRequest, ua};
 
-crate::data_type!(BrowseNextRequest);
-
-impl BrowseNextRequest {
-    #[must_use]
-    pub fn with_continuation_points(
-        mut self,
-        continuation_points: &[ua::ContinuationPoint],
-    ) -> Self {
-        continuation_points
-            .iter()
-            .map(ua::ContinuationPoint::to_byte_string)
-            .collect_ua_array()
-            .move_into_raw(
-                &mut self.0.continuationPointsSize,
-                &mut self.0.continuationPoints,
-            );
-        self
-    }
-
-    #[must_use]
-    pub const fn with_release_continuation_points(
-        mut self,
-        release_continuation_points: bool,
-    ) -> Self {
-        self.0.releaseContinuationPoints = release_continuation_points;
-        self
+crate::data_type::ua_struct! {
+    pub struct BrowseNextRequest {
+        continuationPoints: [ua::ContinuationPoint],
+        requestHeader: &mut ua::RequestHeader,
+        releaseContinuationPoints: bool
     }
 }
 

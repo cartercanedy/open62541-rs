@@ -6,9 +6,9 @@ async fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let client_description = ua::ApplicationDescription::init()
-        .with_application_uri("https://crates.io/crates/open62541")
-        .with_product_uri("https://crates.io/crates/open62541")
-        .with_application_name("en-US", "open62541")
+        .with_application_uri(ua::String::new("https://crates.io/crates/open62541")?)
+        .with_product_uri(ua::String::new("https://crates.io/crates/open62541")?)
+        .with_application_name(ua::LocalizedText::new("en-US", "open62541")?)
         .with_application_type(ua::ApplicationType::CLIENT);
 
     println!("Client description: {client_description:?}");

@@ -30,12 +30,14 @@ mod create_monitored_items_response;
 mod create_subscription_request;
 mod create_subscription_respones;
 mod data_change_filter;
+mod data_change_trigger;
 mod data_value;
 mod date_time;
 mod delete_monitored_items_request;
 mod delete_monitored_items_response;
 mod delete_subscriptions_request;
 mod delete_subscriptions_response;
+mod diagnostic_info;
 mod element_operand;
 mod endpoint_description;
 mod enum_definition;
@@ -46,6 +48,7 @@ mod eu_information;
 mod event_filter;
 mod expanded_node_id;
 mod extension_object;
+mod extension_object_encoding;
 mod filter_operator;
 mod guid;
 mod issued_identity_token;
@@ -80,9 +83,14 @@ mod structure_description;
 mod structure_field;
 mod structure_type;
 mod timestamps_to_return;
+mod translate_browse_paths_to_node_ids_request;
+mod translate_browse_paths_to_node_ids_response;
 mod trust_list_data_type;
 mod user_name_identity_token;
+mod user_token_policy;
+mod user_token_type;
 mod variant;
+mod view_description;
 mod write_request;
 mod write_response;
 mod write_value;
@@ -119,12 +127,14 @@ pub use self::{
     create_subscription_request::CreateSubscriptionRequest,
     create_subscription_respones::CreateSubscriptionResponse,
     data_change_filter::DataChangeFilter,
+    data_change_trigger::DataChangeTrigger,
     data_value::DataValue,
     date_time::DateTime,
     delete_monitored_items_request::DeleteMonitoredItemsRequest,
     delete_monitored_items_response::DeleteMonitoredItemsResponse,
     delete_subscriptions_request::DeleteSubscriptionsRequest,
     delete_subscriptions_response::DeleteSubscriptionsResponse,
+    diagnostic_info::DiagnosticInfo,
     element_operand::ElementOperand,
     endpoint_description::EndpointDescription,
     enum_definition::EnumDefinition,
@@ -135,6 +145,7 @@ pub use self::{
     event_filter::EventFilter,
     expanded_node_id::ExpandedNodeId,
     extension_object::ExtensionObject,
+    extension_object_encoding::ExtensionObjectEncoding,
     filter_operator::FilterOperator,
     guid::Guid,
     issued_identity_token::IssuedIdentityToken,
@@ -173,57 +184,30 @@ pub use self::{
     structure_field::StructureField,
     structure_type::StructureType,
     timestamps_to_return::TimestampsToReturn,
+    translate_browse_paths_to_node_ids_request::TranslateBrowsePathsToNodeIdsRequest,
+    translate_browse_paths_to_node_ids_response::TranslateBrowsePathsToNodeIdsResponse,
     trust_list_data_type::TrustListDataType,
     user_name_identity_token::UserNameIdentityToken,
+    user_token_policy::UserTokenPolicy,
+    user_token_type::UserTokenType,
     variant::Variant,
+    view_description::ViewDescription,
     write_request::WriteRequest,
     write_response::WriteResponse,
     write_value::WriteValue,
     x509_identity_token::X509IdentityToken,
 };
 
-macro_rules! primitive {
-    ($( ($name:ident, $type:ty) ),* $(,)?) => {
-        $(
-            $crate::data_type!($name);
-
-            impl $name {
-                #[must_use]
-                pub const fn new(value: $type) -> Self {
-                    $name(value)
-                }
-
-                #[must_use]
-                pub const fn value(&self) -> $type {
-                    self.0
-                }
-            }
-
-            #[cfg(feature = "serde")]
-            impl serde::Serialize for $name {
-                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-                where
-                    S: serde::Serializer,
-                {
-                    paste::paste! {
-                        serializer.[<serialize_ $type>](self.0)
-                    }
-                }
-            }
-        )*
-    };
+crate::data_type::ua_primitive! {
+    pub struct Boolean(bool);
+    pub struct SByte(i8);
+    pub struct Byte(u8);
+    pub struct Int16(i16);
+    pub struct UInt16(u16);
+    pub struct Int32(i32);
+    pub struct UInt32(u32);
+    pub struct Int64(i64);
+    pub struct UInt64(u64);
+    pub struct Float(f32);
+    pub struct Double(f64);
 }
-
-primitive!(
-    (Boolean, bool), // Data type ns=0;i=1
-    (SByte, i8),     // Data type ns=0;i=2
-    (Byte, u8),      // Data type ns=0;i=3
-    (Int16, i16),    // Data type ns=0;i=4
-    (UInt16, u16),   // Data type ns=0;i=5
-    (Int32, i32),    // Data type ns=0;i=6
-    (UInt32, u32),   // Data type ns=0;i=7
-    (Int64, i64),    // Data type ns=0;i=8
-    (UInt64, u64),   // Data type ns=0;i=9
-    (Float, f32),    // Data type ns=0;i=10
-    (Double, f64),   // Data type ns=0;i=11
-);

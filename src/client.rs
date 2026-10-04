@@ -285,13 +285,16 @@ impl ClientBuilder {
             };
             // Wrap array result immediately to not leak memory when leaving function early as with
             // `?` below.
-            endpoint_descriptions = ua::Array::<ua::EndpointDescription>::from_raw_parts(
-                endpoint_descriptions_size,
-                endpoint_descriptions_ptr,
-            );
+            // SAFETY: The native call transfers its result allocation to this caller.
+            endpoint_descriptions = unsafe {
+                ua::Array::<ua::EndpointDescription>::move_from_raw_parts(
+                    &mut endpoint_descriptions_size,
+                    &mut endpoint_descriptions_ptr,
+                )
+            };
             result
         });
-        Error::verify_good(&status_code)?;
+        Error::verify_good(status_code)?;
 
         let Some(endpoint_descriptions) = endpoint_descriptions else {
             return Err(Error::internal("expected array of endpoint descriptions"));
@@ -400,7 +403,7 @@ impl Client {
             // SAFETY: The method does not take ownership of `client`.
             UA_Client_connect(self.0.as_mut_ptr(), endpoint_url.as_ptr())
         });
-        Error::verify_good(&status_code)
+        Error::verify_good(status_code)
     }
 
     /// Disconnects from endpoint.
