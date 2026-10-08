@@ -98,8 +98,10 @@ impl ApplicationDescription {
         let discovery_urls = discovery_urls
             .iter()
             .map(|discovery_url| ua::String::new(discovery_url).unwrap());
-        ua::Array::from_iter(discovery_urls)
-            .move_into_raw(&mut self.0.discoveryUrlsSize, &mut self.0.discoveryUrls);
+        unsafe {
+            ua::Array::from_iter(discovery_urls)
+                .move_into_raw(&mut self.0.discoveryUrlsSize, &mut self.0.discoveryUrls);
+        }
         self
     }
 }

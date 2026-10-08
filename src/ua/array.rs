@@ -393,15 +393,17 @@ impl<T: DataType> Array<T> {
         (size, ptr.cast_mut())
     }
 
-    /// Moves array into `dst`, giving up ownership.
+    /// Moves array into `dst`, giving up ownership. Soundness is contingent on the source and
+    /// destination pointers being produced by [`UA_Array_new`]/
+    /// [`UA_Array_copy`](open62541_sys::UA_Array_copy). Attempting to move from/to pointers with
+    /// any other provenance is UB, and likely will result in a crash.
     ///
     /// Existing data in `dst` is cleared with [`UA_Array_delete()`] before moving the value; it is
     /// safe to use this operation on already initialized target values.
     ///
     /// After this, it is the responsibility of `dst` to eventually clean up the data.
-    pub(crate) fn move_into_raw(self, dst_size: &mut usize, dst: &mut *mut T::Inner) {
-        // Make sure to clean up any previous value in target.
-        let _unused = Self::from_raw_parts(*dst_size, *dst);
+    pub(crate) unsafe fn move_into_raw(self, dst_size: &mut usize, dst: &mut *mut T::Inner) {
+        let _prev_dst = unsafe { Self::move_from_raw_parts(dst_size, dst) };
 
         let (size, ptr) = self.into_raw_parts();
         *dst_size = size;
@@ -452,6 +454,12 @@ impl<T: DataType> Array<T> {
         } else {
             (slice.len(), slice.as_ptr().cast::<T::Inner>())
         }
+    }
+}
+
+impl<T: DataType> FromIterator<T> for Array<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        Self::from_iter(iter.into_iter())
     }
 }
 

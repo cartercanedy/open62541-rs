@@ -187,8 +187,12 @@ impl ServerBuilder {
         let server_urls = server_urls
             .iter()
             .map(|server_url| ua::String::new(server_url).unwrap());
-        ua::Array::from_iter(server_urls)
-            .move_into_raw(&mut config.serverUrlsSize, &mut config.serverUrls);
+
+        unsafe {
+            ua::Array::from_iter(server_urls)
+                .move_into_raw(&mut config.serverUrlsSize, &mut config.serverUrls);
+        }
+
         self
     }
 

@@ -9,8 +9,10 @@ crate::member_accessors!(TranslateBrowsePathsToNodeIdsRequest {
 impl TranslateBrowsePathsToNodeIdsRequest {
     #[must_use]
     pub fn with_browse_paths(mut self, paths: &[ua::BrowsePath]) -> Self {
-        ua::Array::from_slice(paths)
-            .move_into_raw(&mut self.0.browsePathsSize, &mut self.0.browsePaths);
+        unsafe {
+            ua::Array::from_slice(paths)
+                .move_into_raw(&mut self.0.browsePathsSize, &mut self.0.browsePaths);
+        }
 
         self
     }

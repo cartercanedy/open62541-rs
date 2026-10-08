@@ -20,8 +20,11 @@ impl SimpleAttributeOperand {
 
     #[must_use]
     pub fn with_browse_path(mut self, browse_path: &[ua::QualifiedName]) -> Self {
-        let array = ua::Array::from_slice(browse_path);
-        array.move_into_raw(&mut self.0.browsePathSize, &mut self.0.browsePath);
+        unsafe {
+            ua::Array::from_slice(browse_path)
+                .move_into_raw(&mut self.0.browsePathSize, &mut self.0.browsePath);
+        }
+
         self
     }
 

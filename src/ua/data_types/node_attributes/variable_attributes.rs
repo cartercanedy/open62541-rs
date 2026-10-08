@@ -17,11 +17,17 @@ impl super::VariableAttributes {
 
     #[must_use]
     pub fn with_array_dimensions(mut self, array_dimensions: &[u32]) -> Self {
-        let array_dimensions =
-            ua::Array::from_iter(array_dimensions.iter().copied().map(ua::UInt32::new));
-        array_dimensions
-            .move_into_raw(&mut self.0.arrayDimensionsSize, &mut self.0.arrayDimensions);
+        unsafe {
+            array_dimensions
+                .iter()
+                .copied()
+                .map(ua::UInt32::new)
+                .collect::<ua::Array<_>>()
+                .move_into_raw(&mut self.0.arrayDimensionsSize, &mut self.0.arrayDimensions);
+        }
+
         self.0.specifiedAttributes |= ua::SpecifiedAttributes::ARRAYDIMENSIONS.as_u32();
+
         self
     }
 

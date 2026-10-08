@@ -2,7 +2,8 @@ use crate::{DataType as _, ServiceRequest, ua};
 
 crate::data_type!(BrowseNextRequest);
 crate::member_accessors!(BrowseNextRequest {
-    continuationPoints: [ua::ContinuationPoint]
+    continuationPoints: [ua::ContinuationPoint],
+    releaseContinuationPoints: bool
 });
 
 impl BrowseNextRequest {
@@ -11,15 +12,14 @@ impl BrowseNextRequest {
         mut self,
         continuation_points: &[ua::ContinuationPoint],
     ) -> Self {
-        let array = ua::Array::from_iter(
+        unsafe {
             continuation_points
                 .iter()
-                .map(ua::ContinuationPoint::to_byte_string),
-        );
-        array.move_into_raw(
-            &mut self.0.continuationPointsSize,
-            &mut self.0.continuationPoints,
-        );
+                .map(ua::ContinuationPoint::to_byte_string)
+                .collect::<ua::Array<_>>()
+                .move_into_raw(&mut self.0.continuationPointsSize, &mut self.0.continuationPoints);
+        }
+
         self
     }
 
