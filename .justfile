@@ -6,7 +6,6 @@ _default:
 # Format source code
 fmt:
     cargo fmt --all
-
 # Run code checks
 clippy:
     cargo clippy --locked --no-deps --all-targets --all-features -- -D warnings --cap-lints warn
@@ -44,3 +43,9 @@ upgrade: setup
 # Run pre-commit hooks
 pre-commit:
     pre-commit run --all-files
+
+run-asan-repro:
+    #!/usr/bin/env bash
+    TARGET_TRIPLE="$(rustc -vV | sed -n 's/^host: //p')"
+    ASAN_OPTIONS=detect_leaks=1 RUSTFLAGS="-Z sanitizer=address" cargo +nightly run --example memory_leak_demo --target ${TARGET_TRIPLE}
+

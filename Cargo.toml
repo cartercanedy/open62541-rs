@@ -20,7 +20,7 @@ derive_more = { version = "2.0.1", features = ["debug"] }
 futures-channel = "0.3.30"
 futures-core = { version = "0.3.30", default-features = false }
 log = "0.4.20"
-open62541-sys = { version = "0.6.0" }
+open62541-sys = { git = "https://github.com/cartercanedy/open62541-sys", rev = "bb88c6ede835075d6d98d688da2e6f0df3dbf1c3" }
 parking_lot = "0.12.4"
 paste = "1.0.14"
 serde = { version = "1.0.194", optional = true }
