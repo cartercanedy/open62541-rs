@@ -1,26 +1,30 @@
 [package]
-name = "open62541"
-version = "0.12.0"
-authors = ["HMI Project"]
+name = "nominal-open62541"
+version = "0.12.1"
+authors = ["HMI Project", "Carter Canedy <cartercanedy42@gmail.com>"]
 edition = "2024"
 # Keep the MSRV number here in sync with `test.yaml`.
 rust-version = "1.85"
-description = "High-level, safe bindings for the C99 library open62541, an open source and free implementation of OPC UA (OPC Unified Architecture)."
-documentation = "https://docs.rs/open62541"
+description = "High-level, safe bindings for the C99 library open62541, an open source and free implementation of OPC UA (OPC Unified Architecture). Forked to support downstream package publishing."
+documentation = "https://docs.rs/nominal-open62541"
 readme = "README.md"
-homepage = "https://github.com/HMIProject/open62541"
-repository = "https://github.com/HMIProject/open62541.git"
+homepage = "https://github.com/cartercanedy/open62541-rs"
+repository = "https://github.com/cartercanedy/open62541-rs.git"
 license = "MPL-2.0"
 keywords = ["opcua", "plc", "automation", "hardware", "protocol"]
 categories = ["network-programming", "embedded", "api-bindings"]
 include = ["src/", "README.md", "CHANGELOG.md", "LICENSES/MPL-2.0.txt"]
+
+[lib]
+name = "open62541"
+path = "src/lib.rs"
 
 [dependencies]
 derive_more = { version = "2.0.1", features = ["debug"] }
 futures-channel = "0.3.30"
 futures-core = { version = "0.3.30", default-features = false }
 log = "0.4.20"
-open62541-sys = { version = "0.6.4", git = "https://github.com/cartercanedy/open62541-sys", rev = "2b828681a6ea9001022ecd43b0541d2ffe2e155c" }
+open62541-sys = { version = "0.6", git = "https://github.com/cartercanedy/open62541-sys", rev = "2b828681a6ea9001022ecd43b0541d2ffe2e155c" }
 parking_lot = "0.12.4"
 paste = "1.0.14"
 serde = { version = "1.0.194", optional = true }
