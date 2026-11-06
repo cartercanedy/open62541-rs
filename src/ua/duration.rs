@@ -3,7 +3,7 @@ use open62541_sys::UA_Duration;
 use crate::{DataTypeExt, Result, ua};
 
 /// Wrapper for [`UA_Duration`] from [`open62541_sys`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Duration(UA_Duration);
 
 const MILLIS_PER_SEC: f64 = 1_000.0;
@@ -33,7 +33,7 @@ impl Duration {
         Self(value)
     }
 
-    pub(crate) const fn as_f64(&self) -> f64 {
+    pub(crate) const fn as_f64(self) -> f64 {
         self.0
     }
 
@@ -42,7 +42,7 @@ impl Duration {
     /// This returns the underlying raw value, which may be negative. Negative values are generally
     /// invalid but may have special meanings where the `Duration` is used.
     #[must_use]
-    pub const fn as_millis(&self) -> f64 {
+    pub const fn as_millis(self) -> f64 {
         self.0
     }
 
@@ -53,7 +53,7 @@ impl Duration {
     ///
     /// Use [`Self::as_millis()`] to get the raw value.
     #[must_use]
-    pub fn to_duration(&self) -> Option<std::time::Duration> {
+    pub fn to_duration(self) -> Option<std::time::Duration> {
         // OPC UA encodes durations as interval of time in milliseconds.
         std::time::Duration::try_from_secs_f64(self.as_f64() / MILLIS_PER_SEC).ok()
     }

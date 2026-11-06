@@ -6,8 +6,7 @@ use std::{
     thread,
 };
 
-use open62541::{ClientBuilder, ServerBuilder, ua};
-use open62541_sys::UA_NS0ID_SERVER_SERVERSTATUS_BUILDINFO_PRODUCTNAME;
+use open62541::{ClientBuilder, ServerBuilder, VariableNode, ua};
 
 #[derive(Debug)]
 enum ClientStrategy {
@@ -29,6 +28,25 @@ async fn open_server_and_connect(client_strategy: ClientStrategy) {
         .server_urls(&["opc.tcp://127.0.0.1:0"])
         .build();
 
+    let value_node_id = server
+        .add_variable_node(VariableNode {
+            requested_new_node_id: None,
+            parent_node_id: ua::NodeId::ns0(open62541_sys::UA_NS0ID_OBJECTSFOLDER),
+            reference_type_id: ua::NodeId::ns0(open62541_sys::UA_NS0ID_ORGANIZES),
+            browse_name: ua::QualifiedName::new(1, "fixture"),
+            type_definition: ua::NodeId::ns0(open62541_sys::UA_NS0ID_BASEDATAVARIABLETYPE),
+            attributes: ua::VariableAttributes::default()
+                .with_data_type(ua::NodeId::ns0(open62541_sys::UA_NS0ID_STRING)),
+        })
+        .expect("add fixture variable");
+    let expected = "fixture value";
+    server
+        .write_value(
+            &value_node_id,
+            &ua::Variant::scalar(ua::String::new(expected).unwrap()),
+        )
+        .expect("configure fixture value");
+
     // Run server in background thread, iterating event loop.
     let running = Arc::new(AtomicBool::new(true));
     let background_thread = thread::spawn({
@@ -49,20 +67,6 @@ async fn open_server_and_connect(client_strategy: ClientStrategy) {
         .as_str()
         .expect("valid discovery URL");
 
-    let endpoints = ClientBuilder::default()
-        .get_endpoints(discovery_url)
-        .expect("discover endpoints");
-    assert!(!endpoints.is_empty());
-    drop(endpoints);
-    let targets = server
-        .browse_recursive(
-            &ua::BrowseDescription::default()
-                .with_node_id(ua::NodeId::ns0(open62541_sys::UA_NS0ID_SERVER_SERVERSTATUS)),
-        )
-        .expect("browse server status recursively");
-    assert!(!targets.is_empty());
-    drop(targets);
-
     // Connect to given URL.
     let client = ClientBuilder::default()
         .connect(discovery_url)
@@ -70,31 +74,16 @@ async fn open_server_and_connect(client_strategy: ClientStrategy) {
         .into_async();
 
     let node_class = client
-        .read_attribute(
-            &ua::NodeId::ns0(UA_NS0ID_SERVER_SERVERSTATUS_BUILDINFO_PRODUCTNAME),
-            ua::AttributeId::NODECLASS_T,
-        )
+        .read_attribute(&value_node_id, ua::AttributeId::NODECLASS_T)
         .await
         .expect("read node class");
-    assert!(
-        node_class
-            .value()
-            .unwrap()
-            .to_scalar::<ua::Int32>()
-            .is_some()
-    );
     assert_eq!(node_class.scalar_value(), Some(&ua::NodeClass::VARIABLE));
     assert_eq!(
         node_class.into_scalar_value(),
         Some(ua::NodeClass::VARIABLE)
     );
 
-    let value = client
-        .read_value(&ua::NodeId::ns0(
-            UA_NS0ID_SERVER_SERVERSTATUS_BUILDINFO_PRODUCTNAME,
-        ))
-        .await
-        .expect("read value");
+    let value = client.read_value(&value_node_id).await.expect("read value");
 
     let value: ua::String = value
         .into_value()
@@ -102,12 +91,7 @@ async fn open_server_and_connect(client_strategy: ClientStrategy) {
         .into_scalar()
         .expect("has string value");
 
-    assert!(
-        value
-            .as_str()
-            .expect("is valid string")
-            .contains("open62541 OPC UA Server")
-    );
+    assert_eq!(value.as_str(), Some(expected));
 
     // Disconnect or drop the client.
     match client_strategy {

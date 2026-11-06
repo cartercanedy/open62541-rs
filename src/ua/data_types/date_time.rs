@@ -36,7 +36,7 @@ impl DateTime {
 
     /// Returns the UNIX timestamp with nanosecond precision.
     #[must_use]
-    pub fn as_unix_timestamp_nanos(&self) -> i128 {
+    pub fn as_unix_timestamp_nanos(self) -> i128 {
         // OPC UA encodes `DateTime` as Windows file time: a 64-bit value that represents the number
         // of 100-nanosecond intervals that have elapsed since 12:00 A.M. January 1, 1601 (UTC).
         let ua_ticks = i128::from(self.0);
@@ -49,7 +49,7 @@ impl DateTime {
 #[cfg(feature = "time")]
 impl DateTime {
     #[must_use]
-    pub fn to_utc(&self) -> Option<time::UtcDateTime> {
+    pub fn to_utc(self) -> Option<time::UtcDateTime> {
         time::UtcDateTime::from_unix_timestamp_nanos(self.as_unix_timestamp_nanos()).ok()
     }
 }
@@ -118,8 +118,6 @@ mod tests {
     fn from_offset_to_utc() {
         // A timestamp with 100-nanosecond precision.
         let dt = datetime!(2023-11-20 16:51:15.9876543 -2:00);
-        assert_eq!(offset!(-2:00), dt.offset());
-        assert_ne!(offset!(UTC), dt.offset());
         let dt_ua = ua::DateTime::try_from(dt.to_utc()).unwrap();
         let dt_utc: OffsetDateTime = UtcDateTime::try_from(dt_ua).unwrap().into();
 

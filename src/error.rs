@@ -49,7 +49,6 @@ impl Error {
     #[must_use]
     pub const fn status_code(&self) -> ua::StatusCode {
         match self {
-            // TODO: Avoid clone and make `ua::StatusCode` derive `Copy`.
             Error::Server(status_code) => *status_code,
             Error::Internal(_) => ua::StatusCode::BAD,
         }

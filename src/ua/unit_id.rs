@@ -31,7 +31,7 @@ impl UnitId {
     /// [UNECE documents]: <https://unece.org/trade/documents/session-documents/revision-6>
     /// [OPC UA specification]: <http://www.opcfoundation.org/UA/EngineeringUnits/UNECE/UNECE_to_OPCUA.csv>
     #[must_use]
-    pub fn to_unece_code(&self) -> Option<String> {
+    pub fn to_unece_code(self) -> Option<String> {
         let Self(unit_id) = self;
         let ascii_chars = unit_id
             .to_be_bytes()

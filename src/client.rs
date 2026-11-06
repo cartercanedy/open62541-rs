@@ -98,23 +98,27 @@ impl ClientBuilder {
     /// description must match the URI set in the certificate.
     #[must_use]
     pub fn client_description(mut self, client_description: ua::ApplicationDescription) -> Self {
-        client_description.move_into_raw(&mut self.config_mut().clientDescription);
+        // SAFETY: The client owns this initialized native configuration field.
+        unsafe { client_description.move_into_raw(&mut self.config_mut().clientDescription) };
         self
     }
 
     /// Sets user identity token.
     #[must_use]
     pub fn user_identity_token(mut self, user_identity_token: &ua::UserIdentityToken) -> Self {
-        user_identity_token
-            .to_extension_object()
-            .move_into_raw(&mut self.config_mut().userIdentityToken);
+        // SAFETY: The client owns this initialized native configuration field.
+        unsafe {
+            user_identity_token
+                .to_extension_object()
+                .move_into_raw(&mut self.config_mut().userIdentityToken);
+        }
         self
     }
 
     /// Sets security mode.
     #[must_use]
     pub fn security_mode(mut self, security_mode: ua::MessageSecurityMode) -> Self {
-        security_mode.move_into_raw(&mut self.config_mut().securityMode);
+        self.config_mut().securityMode = security_mode.into_raw();
         self
     }
 
@@ -130,7 +134,8 @@ impl ClientBuilder {
     /// - `http://opcfoundation.org/UA/SecurityPolicy#Aes256_Sha256_RsaPss`
     #[must_use]
     pub fn security_policy_uri(mut self, security_policy_uri: ua::String) -> Self {
-        security_policy_uri.move_into_raw(&mut self.config_mut().securityPolicyUri);
+        // SAFETY: The client owns this initialized native configuration field.
+        unsafe { security_policy_uri.move_into_raw(&mut self.config_mut().securityPolicyUri) };
         self
     }
 

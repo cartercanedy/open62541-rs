@@ -19,9 +19,9 @@ mod tests {
     fn combine_masks() {
         // We support mask combinators in `const` expressions.
         const LHS: ua::TrustListMasks = ua::TrustListMasks::TRUSTEDCERTIFICATES
-            .or(&ua::TrustListMasks::TRUSTEDCRLS)
-            .or(&ua::TrustListMasks::ISSUERCERTIFICATES)
-            .or(&ua::TrustListMasks::ISSUERCRLS);
+            .or(ua::TrustListMasks::TRUSTEDCRLS)
+            .or(ua::TrustListMasks::ISSUERCERTIFICATES)
+            .or(ua::TrustListMasks::ISSUERCRLS);
         const RHS: ua::TrustListMasks = ua::TrustListMasks::ALL;
         assert_eq!(LHS, RHS);
 

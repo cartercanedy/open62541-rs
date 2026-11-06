@@ -16,6 +16,7 @@ impl ServiceRequest for ReadRequest {
     }
 
     fn request_header_mut(&mut self) -> &mut ua::RequestHeader {
-        ua::RequestHeader::raw_mut(&mut self.0.requestHeader)
+        // SAFETY: The request exclusively owns its initialized header.
+        unsafe { ua::RequestHeader::raw_mut(&mut self.0.requestHeader) }
     }
 }

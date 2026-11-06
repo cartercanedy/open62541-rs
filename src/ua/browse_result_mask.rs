@@ -23,7 +23,7 @@ mod tests {
     fn combine_masks() {
         // We support mask combinators in `const` expressions.
         const LHS: ua::BrowseResultMask =
-            ua::BrowseResultMask::REFERENCETYPEID.or(&ua::BrowseResultMask::ISFORWARD);
+            ua::BrowseResultMask::REFERENCETYPEID.or(ua::BrowseResultMask::ISFORWARD);
         const RHS: ua::BrowseResultMask = ua::BrowseResultMask::REFERENCETYPEINFO;
         assert_eq!(LHS, RHS);
 

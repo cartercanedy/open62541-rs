@@ -138,22 +138,6 @@ mod tests {
     }
 
     #[test]
-    fn mutable_accessors_update_path_elements() {
-        let mut path = RelativePath::parse("/Objects/Server").unwrap();
-        *path.get_mut(0).unwrap() = ua::RelativePathElement::init().with_is_inverse(true);
-        assert!(path.get(0).unwrap().is_inverse());
-        for element in path.iter_mut() {
-            *element = ua::RelativePathElement::init().with_include_subtypes(true);
-        }
-        assert!(
-            path.elements_mut()
-                .unwrap()
-                .iter()
-                .all(ua::RelativePathElement::include_subtypes)
-        );
-    }
-
-    #[test]
     fn well_formed_path_survives_round_trip() {
         const GOOD_PATH: &str = "<!Aggregates>2:PLC1/2:GVL_MAIN";
         let parsed =

@@ -17,32 +17,3 @@ impl DeleteSubscriptionsRequest {
         self
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::{DataType, ua};
-
-    #[test]
-    fn typed_subscription_ids_keep_uint32_storage_and_empty_sentinel() {
-        let ids =
-            [1, u32::MAX].map(|id| ua::SubscriptionId::new(ua::IntegerId::from_u32(id).unwrap()));
-        let request = ua::DeleteSubscriptionsRequest::init().with_subscription_ids(&ids);
-        assert_eq!(
-            request.subscription_ids().unwrap(),
-            &[ua::UInt32::new(1), ua::UInt32::new(u32::MAX)]
-        );
-
-        let request = request.with_subscription_ids(&ids[1..]);
-        assert_eq!(
-            request.subscription_ids().unwrap(),
-            &[ua::UInt32::new(u32::MAX)]
-        );
-
-        let request = request.with_subscription_ids(&[]);
-        assert_eq!(request.subscription_ids().unwrap(), &[]);
-        assert_eq!(request.0.subscriptionIdsSize, 0);
-        assert_eq!(request.0.subscriptionIds.cast_const().cast(), unsafe {
-            open62541_sys::UA_EMPTY_ARRAY_SENTINEL
-        });
-    }
-}

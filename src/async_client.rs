@@ -937,9 +937,11 @@ mod tests {
         let mut result = ua::BrowseResult::init();
 
         // SAFETY: The initialized result uniquely owns both target fields.
-        let raw = unsafe { result.as_mut() };
-        references.move_into_raw(&mut raw.referencesSize, &mut raw.references);
-        continuation.move_into_raw(&mut raw.continuationPoint);
+        unsafe {
+            let raw = result.as_mut();
+            references.move_into_raw(&mut raw.referencesSize, &mut raw.references);
+            continuation.move_into_raw(&mut raw.continuationPoint);
+        }
 
         let (references, continuation) = to_browse_result(result, None).unwrap();
 

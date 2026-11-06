@@ -21,7 +21,7 @@ impl ExtensionObjectEncoding {
 
     #[must_use]
     #[deprecated(note = "use unsafe `as_u32_unchecked` instead")]
-    pub const fn as_u32(&self) -> u32 {
+    pub const fn as_u32(self) -> u32 {
         // SAFETY: Reading the raw integer has no additional preconditions.
         unsafe { self.as_u32_unchecked() }
     }

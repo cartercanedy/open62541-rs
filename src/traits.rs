@@ -52,7 +52,7 @@ pub trait Attribute: Debug + Copy {
     type Value: DataTypeExt + Send;
 
     /// Gets attribute ID.
-    fn id(&self) -> ua::AttributeId;
+    fn id(self) -> ua::AttributeId;
 }
 
 /// Server node attributes.

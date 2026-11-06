@@ -26,6 +26,9 @@ impl BrowseResult {
     /// Moves out the continuation point, leaving it unset in this result.
     #[must_use]
     pub fn take_continuation_point(&mut self) -> Option<ua::ContinuationPoint> {
-        ua::ContinuationPoint::new(ua::ByteString::take_raw(&mut self.0.continuationPoint))
+        // SAFETY: The result exclusively owns this initialized ByteString field.
+        ua::ContinuationPoint::new(unsafe {
+            ua::ByteString::take_raw(&mut self.0.continuationPoint)
+        })
     }
 }

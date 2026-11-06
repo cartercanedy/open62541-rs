@@ -55,7 +55,8 @@ impl Variant {
             // SAFETY: The scalar is exclusively owned and its exact descriptor describes T::Inner.
             // Replacing its contents preserves the existing native allocation and descriptor.
             let target = unsafe { &mut *self.0.data.cast::<T::Inner>() };
-            value.move_into_raw(target);
+            // SAFETY: The exact descriptor and DATA storage establish exclusive native ownership.
+            unsafe { value.move_into_raw(target) };
             return self;
         }
 
@@ -168,8 +169,7 @@ impl Variant {
         };
         // SAFETY: DATA storage is owned. The matching descriptor permits the payload view;
         // the Variant-self fallback instead points to this exclusively borrowed wrapper.
-        unsafe { data.as_mut() }
-            .map(T::take_raw)
+        unsafe { data.as_mut().map(|data| T::take_raw(data)) }
             .ok_or_else(|| crate::Error::new(ua::StatusCode::BADTYPEMISMATCH))
     }
 

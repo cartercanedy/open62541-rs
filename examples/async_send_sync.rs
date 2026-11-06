@@ -42,6 +42,7 @@ async fn read_background(client: Arc<AsyncClient>) -> anyhow::Result<()> {
             .scalar_value()
             .context("get value")?
             .as_scalar()
+            .copied()
             .and_then(ua::DateTime::to_utc)
     );
 
@@ -67,6 +68,7 @@ async fn watch_background(client: Arc<AsyncClient>) -> anyhow::Result<()> {
         let value = value
             .value()
             .and_then(ua::Variant::as_scalar)
+            .copied()
             .and_then(ua::DateTime::to_utc);
         println!("Node {node_id} emitted value #{index}: {value:?}");
     }

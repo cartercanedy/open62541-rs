@@ -33,7 +33,7 @@ impl StatusCode {
     /// }
     /// ```
     #[must_use]
-    pub fn is_good(&self) -> bool {
+    pub fn is_good(self) -> bool {
         unsafe { UA_StatusCode_isGood(self.0) }
     }
 
@@ -42,7 +42,7 @@ impl StatusCode {
     /// Uncertain status codes indicate that the operation was partially successful and that
     /// associated results might not be suitable for some purposes.
     #[must_use]
-    pub fn is_uncertain(&self) -> bool {
+    pub fn is_uncertain(self) -> bool {
         unsafe { UA_StatusCode_isUncertain(self.0) }
     }
 
@@ -51,7 +51,7 @@ impl StatusCode {
     /// Bad status codes indicate that the operation failed and any associated results cannot be
     /// used.
     #[must_use]
-    pub fn is_bad(&self) -> bool {
+    pub fn is_bad(self) -> bool {
         unsafe { UA_StatusCode_isBad(self.0) }
     }
 
@@ -67,7 +67,7 @@ impl StatusCode {
     /// assert_eq!(ua::StatusCode::GOOD.name(), "Good");
     /// ```
     #[must_use]
-    pub fn name(&self) -> &'static str {
+    pub fn name(self) -> &'static str {
         status_code_name(self.0)
     }
 

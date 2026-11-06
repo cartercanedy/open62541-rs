@@ -31,6 +31,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Breaking: Copy scalar, flag, and helper accessors take `self` by value; flag operations also
+  take their other mask by value. `Attribute::id()` takes `self`, and `ua::Duration` implements `Copy`.
+- Breaking: `DataType::raw_mut`, `take_raw`, `clone_into_raw`, and `move_into_raw` are unsafe.
+  Callers must guarantee valid native ownership and cleanup.
 - Breaking: datatype builders take owned wrapper values and native `Array<T>` buffers. Use
   `[values].into()` or `vec.into()` to move collections into native arrays, and clone explicitly
   when retaining a borrowed input. String and text builders take validated `String` and

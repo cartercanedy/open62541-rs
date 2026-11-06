@@ -27,7 +27,8 @@ impl DataValue {
     #[must_use]
     pub fn new(value: ua::Variant) -> Self {
         let mut inner = ua::DataValue::init();
-        value.move_into_raw(&mut inner.0.value);
+        // SAFETY: The wrapper exclusively owns this initialized native field.
+        unsafe { value.move_into_raw(&mut inner.0.value) };
         inner.0.set_hasValue(true);
         debug_assert!(!inner.0.hasStatus());
         debug_assert!(!inner.0.hasSourceTimestamp());
@@ -39,21 +40,22 @@ impl DataValue {
 
     #[must_use]
     pub fn with_value(mut self, value: ua::Variant) -> Self {
-        value.move_into_raw(&mut self.0.value);
+        // SAFETY: The wrapper exclusively owns this initialized native field.
+        unsafe { value.move_into_raw(&mut self.0.value) };
         self.0.set_hasValue(true);
         self
     }
 
     #[must_use]
     pub fn with_source_timestamp(mut self, source_timestamp: ua::DateTime) -> Self {
-        source_timestamp.move_into_raw(&mut self.0.sourceTimestamp);
+        self.0.sourceTimestamp = source_timestamp.into_raw();
         self.0.set_hasSourceTimestamp(true);
         self
     }
 
     #[must_use]
     pub fn with_server_timestamp(mut self, server_timestamp: ua::DateTime) -> Self {
-        server_timestamp.move_into_raw(&mut self.0.serverTimestamp);
+        self.0.serverTimestamp = server_timestamp.into_raw();
         self.0.set_hasServerTimestamp(true);
         self
     }
@@ -74,7 +76,7 @@ impl DataValue {
 
     #[must_use]
     pub fn with_status(mut self, status: ua::StatusCode) -> Self {
-        status.move_into_raw(&mut self.0.status);
+        self.0.status = status.into_raw();
         self.0.set_hasStatus(true);
         self
     }
@@ -92,9 +94,10 @@ impl DataValue {
 
     #[must_use]
     pub(crate) fn into_value(mut self) -> Option<ua::Variant> {
-        self.0
-            .hasValue()
-            .then(|| DataType::take_raw(&mut self.0.value))
+        self.0.hasValue().then(|| {
+            // SAFETY: The DataValue owns the initialized payload, including any no-delete tag.
+            unsafe { DataType::take_raw(&mut self.0.value) }
+        })
     }
 
     #[must_use]

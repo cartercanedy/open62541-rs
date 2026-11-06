@@ -43,7 +43,8 @@ impl ClientConfig {
                     // This clones the password string. The original string from the callback method
                     // is zeroized. The cloned string is handled by `open62541`, eventually zeroized
                     // there as well in implementation of `UA_ClientConfig_setDefaultEncryption()`.
-                    result_password.as_byte_string().clone_into_raw(password);
+                    // SAFETY: The native callback provides an initialized, owned password output.
+                    unsafe { result_password.as_byte_string().clone_into_raw(password) };
                     ua::StatusCode::GOOD
                 }
                 Err(err) => err.status_code(),

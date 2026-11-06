@@ -3,7 +3,8 @@ use crate::{DataType as _, ua};
 impl super::VariableAttributes {
     #[must_use]
     pub fn with_data_type(mut self, data_type: ua::NodeId) -> Self {
-        data_type.move_into_raw(&mut self.0.dataType);
+        // SAFETY: The wrapper exclusively owns this initialized native field.
+        unsafe { data_type.move_into_raw(&mut self.0.dataType) };
         self.0.specifiedAttributes |= ua::SpecifiedAttributes::DATATYPE.as_u32();
         self
     }

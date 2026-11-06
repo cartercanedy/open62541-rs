@@ -10,7 +10,8 @@ impl LiteralOperand {
     #[must_use]
     pub fn new(value: ua::Variant) -> Self {
         let mut inner = Self::init();
-        value.move_into_raw(&mut inner.0.value);
+        // SAFETY: The wrapper exclusively owns this initialized native field.
+        unsafe { value.move_into_raw(&mut inner.0.value) };
         inner
     }
 }

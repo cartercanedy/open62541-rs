@@ -110,8 +110,8 @@ impl DataSourceReadContext {
     /// [`DataSource`].
     #[must_use]
     pub fn value_mut(&mut self) -> &mut ua::DataValue {
-        let value_source = unsafe { self.value_target.as_mut() };
-        ua::DataValue::raw_mut(value_source)
+        // SAFETY: The native read callback provides exclusive access to its initialized output.
+        unsafe { ua::DataValue::raw_mut(self.value_target.as_mut()) }
     }
 
     /// Sets value.

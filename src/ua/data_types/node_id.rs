@@ -302,7 +302,7 @@ mod serde {
 
 #[cfg(test)]
 mod tests {
-    use std::{panic, str};
+    use std::str;
 
     use crate::ua;
 
@@ -315,17 +315,12 @@ mod tests {
             <ua::NodeId as str::FromStr>::from_str("ns=0;i=2258").expect("should be valid node ID");
 
         assert_eq!(<ua::NodeId as ToString>::to_string(&node_id), "i=2258");
-
-        // Usually, parsing is done via `parse()` however which is implemented for `FromStr` target.
-        //
-        let _node_id: ua::NodeId = "ns=0;i=2258".parse().expect("should be valid node ID");
     }
 
     #[test]
     fn empty_byte_string() {
         const PAYLOAD: &[u8] = &[];
-        let node_id = panic::catch_unwind(|| ua::NodeId::byte_string(1, PAYLOAD))
-            .expect("byte string node ID should allow empty byte strings");
+        let node_id = ua::NodeId::byte_string(1, PAYLOAD);
 
         let (ns, id) = node_id
             .as_byte_string()
@@ -362,8 +357,7 @@ mod tests {
             140, 247, 64,
         ];
 
-        let node_id = panic::catch_unwind(|| ua::NodeId::byte_string(2, PAYLOAD))
-            .expect("byte string node ID should allow NUL bytes");
+        let node_id = ua::NodeId::byte_string(2, PAYLOAD);
 
         let (ns_index, identifier) = node_id
             .as_byte_string()

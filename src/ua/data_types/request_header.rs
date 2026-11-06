@@ -8,11 +8,13 @@ crate::data_type::ua_struct! {
         #[builder(skip)]
         #[skip(uses = Self::timeout_hint)]
         timeoutHint: u32,
+        #[builder(skip)]
         requestHandle: u32,
         /// The native client replaces this timestamp when sending a request.
         #[from_inner]
         timestamp: ua::DateTime,
         /// The native client replaces this token when a session is active.
+        #[builder(skip)]
         authenticationToken: &ua::NodeId,
         additionalHeader: &ua::ExtensionObject,
         returnDiagnostics: u32

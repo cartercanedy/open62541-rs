@@ -44,7 +44,8 @@ macro_rules! derived {
                 }
 
                 fn with_display_name(mut self, display_name: ua::LocalizedText) -> Self {
-                    display_name.move_into_raw(&mut self.0.displayName);
+                    // SAFETY: These attributes exclusively own the initialized display name.
+                    unsafe { display_name.move_into_raw(&mut self.0.displayName) };
                     self.0.specifiedAttributes |= ua::SpecifiedAttributes::DISPLAYNAME.as_u32();
                     self
                 }

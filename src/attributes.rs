@@ -9,7 +9,7 @@ macro_rules! attribute_impl {
             impl $crate::Attribute for $name {
                 type Value = $crate::ua::$value;
 
-                fn id(&self) -> $crate::ua::AttributeId {
+                fn id(self) -> $crate::ua::AttributeId {
                     paste::paste! {
                         $crate::ua::AttributeId::[<$name:upper>]
                     }
@@ -68,7 +68,7 @@ attribute_impl!(
 impl Attribute for &ua::AttributeId {
     type Value = ua::Variant;
 
-    fn id(&self) -> ua::AttributeId {
-        **self
+    fn id(self) -> ua::AttributeId {
+        *self
     }
 }
