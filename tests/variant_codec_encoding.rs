@@ -1,14 +1,12 @@
 use std::fmt::Debug;
 use std::ptr;
 
-use open62541::{DataType, ua};
+use open62541::{DataType, ValueType, ua};
 use open62541_sys::{UA_decodeBinary, UA_encodeBinary};
 
-fn binary_round_trip(value: &ua::Variant) -> ua::Variant {
+fn binary_encode(value: &ua::Variant) -> ua::ByteString {
     let mut encoded = ua::ByteString::init();
-    let mut decoded = ua::Variant::init();
-    // SAFETY: Each pointer refers to a live value with the supplied Variant descriptor.
-    // The decoder owns its output, and both output values are cleared by their wrappers.
+    // SAFETY: The source and initialized output have the supplied native descriptors.
     unsafe {
         assert_eq!(
             UA_encodeBinary(
@@ -19,6 +17,15 @@ fn binary_round_trip(value: &ua::Variant) -> ua::Variant {
             ),
             0
         );
+    }
+    encoded
+}
+
+fn binary_round_trip(value: &ua::Variant) -> ua::Variant {
+    let encoded = binary_encode(value);
+    let mut decoded = ua::Variant::init();
+    // SAFETY: The input is encoded Variant data and the initialized output owns decoded storage.
+    unsafe {
         assert_eq!(
             UA_decodeBinary(
                 encoded.as_ptr(),
@@ -30,6 +37,68 @@ fn binary_round_trip(value: &ua::Variant) -> ua::Variant {
         );
     }
     decoded
+}
+
+#[test]
+fn native_mask_variants_use_enum_identity_and_int32_wire_values() {
+    fn check<T: DataType<Inner = u32> + Copy + PartialEq>(index: u32) {
+        // SAFETY: The generated index belongs to the native static descriptor array.
+        let expected = unsafe { (&raw const open62541_sys::UA_TYPES).as_ref().unwrap() }
+            .get(usize::try_from(index).unwrap())
+            .expect("native mask descriptor exists");
+        assert!(ptr::eq(T::data_type(), expected));
+        assert_ne!(T::data_type(), ua::UInt32::data_type());
+
+        // SAFETY: These integer-backed masks accept every u32 bit pattern.
+        let value = unsafe { T::from_raw(u32::MAX) };
+        let native = ua::Variant::scalar(value);
+        assert_eq!(
+            native.type_id(),
+            Some(ua::NodeId::raw_ref(&expected.typeId))
+        );
+        assert_eq!(native.value_type(), Some(ValueType::Enumeration));
+        assert_eq!(
+            native.to_scalar::<ua::Enumeration>().unwrap().as_u32(),
+            u32::MAX
+        );
+        assert!(native.to_scalar::<ua::UInt32>().is_none());
+        assert_eq!(
+            binary_encode(&native).as_bytes(),
+            Some([0x06, 0xff, 0xff, 0xff, 0xff].as_slice())
+        );
+        let decoded = binary_round_trip(&native);
+        assert_eq!(decoded.value_type(), Some(ValueType::Int32));
+        assert_eq!(decoded.as_scalar::<T>(), Some(&value));
+        assert_eq!(decoded.into_scalar::<T>(), Some(value));
+        assert!(
+            ua::Variant::scalar(ua::UInt32::new(1))
+                .to_scalar::<T>()
+                .is_none()
+        );
+
+        let array = ua::Variant::array([value, value].into());
+        assert_eq!(array.value_type(), Some(ValueType::Enumeration));
+        assert_eq!(
+            binary_encode(&array).as_bytes(),
+            Some(
+                [
+                    0x86, 2, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+                ]
+                .as_slice()
+            )
+        );
+        assert_eq!(
+            binary_round_trip(&array)
+                .to_array::<T>()
+                .unwrap()
+                .as_slice(),
+            [value, value]
+        );
+    }
+
+    check::<ua::TrustListMasks>(open62541_sys::UA_TYPES_TRUSTLISTMASKS);
+    check::<ua::BrowseResultMask>(open62541_sys::UA_TYPES_BROWSERESULTMASK);
+    check::<ua::SpecifiedAttributes>(open62541_sys::UA_TYPES_NODEATTRIBUTESMASK);
 }
 
 fn check_enum<T: DataType + PartialEq + Debug>(value: &T) {

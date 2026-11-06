@@ -18,8 +18,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   copy enum arrays. `Variant::type_id()` retains the concrete source datatype identity;
   wire-decoded Int32 values still inspect as Int32.
 - Add numeric Serde serialization and deserialization for protocol enums, integer-backed flags,
-  and UInt32 enum helpers. Protocol enums use signed Int32 values and preserve unknown bit patterns;
-  flags and helpers use their unsigned storage width. Enum Variants serialize in the same numeric
+  and UInt32 enum helpers. Protocol enums and masks with native enum descriptors use signed Int32
+  values and preserve unknown bit patterns; other flags and helpers use their unsigned storage width.
+  Enum Variants serialize in the same numeric
   form, and enum-array serialization borrows the native payload.
 - Add public unsafe unchecked enum and mask raw conversion helpers.
 - Expose `ua::ExtensionObjectEncoding` and `ExtensionObject::encoding()`.
@@ -56,6 +57,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   remain unsigned.
 - Breaking: native mask types use themselves as `DataTypeExt::Inner`. Generic code requiring an
   associated type such as `Inner = ua::Byte` must use the mask type instead.
+- `TrustListMasks`, `BrowseResultMask`, and `SpecifiedAttributes` use the native `TrustListMasks`,
+  `BrowseResultMask`, and `NodeAttributesMask` descriptors for standalone Variants. Their Binary
+  representation is Int32, and typed extraction accepts the named descriptor or decoded Int32,
+  rather than UInt32. Struct-member storage, raw u32 access, and const flag operations are unchanged.
 - Breaking: `TrustListDataType::with_*` certificate and CRL builders accept `Array<ByteString>`
   rather than slices of `String`, matching the binary payloads in the C schema.
 - Integer-backed mask `Debug` output uses the numeric value, such as `1`, instead of a wrapper

@@ -6,7 +6,9 @@
 //!   const `new` and `value` methods; bare declarations leave specialized methods handwritten.
 //! - [`ua_enum!`]: open bindgen enums with named/[`ua::Int32`] extraction. Helper enums explicitly select
 //!   primitive Copy storage and its descriptor with `ua_inner = UInt32`.
-//! - `ua_optionset!`: integer-backed flags with explicit `Byte`, `UInt16`, or `UInt32` storage/descriptors.
+//! - `ua_optionset!`: integer-backed flags with explicit `Byte`, `UInt16`, or `UInt32` storage.
+//!   `ua_type` selects an existing native enum descriptor independently of `UInt32` field storage;
+//!   otherwise the storage type supplies the builtin descriptor.
 //! - [`ua_alias!`]: builtin-backed aliases. [`ua::String`] and [`ua::ByteString`] aliases own allocations and accept
 //!   both named and builtin descriptors. Scalar aliases use their selected builtin storage and
 //!   receive [`Clone`] and [`Copy`] automatically.
@@ -471,14 +473,16 @@ where
 }
 
 #[cfg(all(test, feature = "serde"))]
-pub(crate) fn verify_unsigned_serde<T>(max: u64)
+pub(crate) fn verify_numeric_serde<T>(min: i64, max: i64)
 where
     T: serde::Serialize + serde::de::DeserializeOwned + PartialEq + Debug,
 {
-    let json = max.to_string();
-    let parsed = serde_json::from_str::<T>(&json).unwrap();
-    assert_eq!(serde_json::to_string(&parsed).unwrap(), json);
-    assert!(serde_json::from_str::<T>("-1").is_err());
+    for boundary in [min, max] {
+        let json = boundary.to_string();
+        let parsed = serde_json::from_str::<T>(&json).unwrap();
+        assert_eq!(serde_json::to_string(&parsed).unwrap(), json);
+    }
+    assert!(serde_json::from_str::<T>(&(min - 1).to_string()).is_err());
     assert!(serde_json::from_str::<T>(&(max + 1).to_string()).is_err());
 }
 
@@ -673,7 +677,7 @@ macro_rules! ua_enum {
                     std::mem::size_of::<u32>(), std::mem::align_of::<u32>(),
                 );
                 #[cfg(feature = "serde")]
-                $crate::data_type::verify_unsigned_serde::<$name>(u64::from(u32::MAX));
+                $crate::data_type::verify_numeric_serde::<$name>(0, i64::from(u32::MAX));
             }
         }
 
@@ -838,19 +842,28 @@ pub(crate) use ua_enum;
 
 // Integer-backed flags only; the structured Value/ValidBits OptionSet is a separate datatype.
 macro_rules! ua_optionset {
+    (#[ua_inner = UInt32] #[ua_type = $ua_type:ident] pub enum $name:ident $variants:tt) => {
+        $crate::data_type::ua_optionset!(
+            @flags $name : u32, UInt32, $ua_type, ENUM, i32; $variants;
+            fn accepts_variant_type(data_type: *const open62541_sys::UA_DataType) -> bool {
+                data_type == <Self as $crate::DataType>::data_type()
+                    || data_type == <crate::ua::Int32 as crate::DataType>::data_type()
+            }
+        );
+    };
     (#[ua_inner = Byte] pub enum $name:ident $variants:tt) => {
-        $crate::data_type::ua_optionset!(@flags $name : u8, Byte; $variants);
+        $crate::data_type::ua_optionset!(@flags $name : u8, Byte, Byte, BYTE, u8; $variants);
     };
     (#[ua_inner = UInt16] pub enum $name:ident $variants:tt) => {
-        $crate::data_type::ua_optionset!(@flags $name : u16, UInt16; $variants);
+        $crate::data_type::ua_optionset!(@flags $name : u16, UInt16, UInt16, UINT16, u16; $variants);
     };
     (#[ua_inner = UInt32] pub enum $name:ident $variants:tt) => {
-        $crate::data_type::ua_optionset!(@flags $name : u32, UInt32; $variants);
+        $crate::data_type::ua_optionset!(@flags $name : u32, UInt32, UInt32, UINT32, u32; $variants);
     };
-    (@flags $name:ident : $inner_t:ident, $ua_inner:ident; {
+    (@flags $name:ident : $inner_t:ident, $ua_inner:ident, $ua_type:ident, $kind:ident, $serde_t:ident; {
         NONE = $none:expr,
         $( $(#[$doc:meta])* $variant:ident = $raw:expr ),+ $(,)?
-    }) => {
+    } $(; $($extra:item)*)?) => {
         #[expect(clippy::allow_attributes, reason = "constant widths vary by declaration")]
         #[allow(
             clippy::as_conversions,
@@ -873,8 +886,13 @@ macro_rules! ua_optionset {
             $crate::data_type::native_type_impl!(
                 $name,
                 [<UA_ $ua_inner>],
-                [<UA_TYPES_ $ua_inner:upper>]
+                [<UA_TYPES_ $ua_type:upper>]
+                $(; $($extra)*)?
             );
+            const _: () = {
+                assert!(std::mem::size_of::<open62541_sys::[<UA_ $ua_type>]>() == std::mem::size_of::<$inner_t>());
+                assert!(std::mem::align_of::<open62541_sys::[<UA_ $ua_type>]>() == std::mem::align_of::<$inner_t>());
+            };
         }
 
         #[cfg(test)]
@@ -886,25 +904,30 @@ macro_rules! ua_optionset {
             #[test]
             fn [<verify_ $name:snake _flag_contract>]() {
                 $crate::data_type::verify_scalar_layout::<$name>(
-                    u32::from_ne_bytes(open62541_sys::UA_DataTypeKind::[<UA_DATATYPEKIND_ $ua_inner:upper>].0.to_ne_bytes()),
+                    u32::from_ne_bytes(open62541_sys::UA_DataTypeKind::[<UA_DATATYPEKIND_ $kind>].0.to_ne_bytes()),
                     std::mem::size_of::<$inner_t>(), std::mem::align_of::<$inner_t>(),
                 );
                 #[cfg(feature = "serde")]
-                $crate::data_type::verify_unsigned_serde::<$name>(u64::from($inner_t::MAX));
+                $crate::data_type::verify_numeric_serde::<$name>(
+                    i64::from($serde_t::MIN), i64::from($serde_t::MAX),
+                );
             }
         }
 
         #[cfg(feature = "serde")]
         impl serde::Serialize for $name {
             fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-                paste::paste! { serializer.[<serialize_ $inner_t>](self.0) }
+                paste::paste! {
+                    serializer.[<serialize_ $serde_t>]($serde_t::from_ne_bytes(self.0.to_ne_bytes()))
+                }
             }
         }
 
         #[cfg(feature = "serde")]
         impl<'de> serde::Deserialize<'de> for $name {
             fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-                <$inner_t as serde::Deserialize>::deserialize(deserializer).map(Self)
+                <$serde_t as serde::Deserialize>::deserialize(deserializer)
+                    .map(|value| Self($inner_t::from_ne_bytes(value.to_ne_bytes())))
             }
         }
 

@@ -17,10 +17,7 @@ fn builtin_scalars_extract_as_masks() {
         ua::AccessRestrictionType::SIGNINGREQUIRED,
     );
     check(ua::UInt32::new(1), ua::AttributeWriteMask::ACCESSLEVEL);
-    check(ua::UInt32::new(1), ua::BrowseResultMask::REFERENCETYPEID);
     check(ua::UInt32::new(1), ua::NodeClassMask::OBJECT);
-    check(ua::UInt32::new(1), ua::TrustListMasks::TRUSTEDCERTIFICATES);
-    check(ua::UInt32::new(1), ua::SpecifiedAttributes::ACCESSLEVEL);
 }
 
 #[test]

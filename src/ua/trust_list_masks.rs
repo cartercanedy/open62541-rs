@@ -1,5 +1,6 @@
 crate::data_type::ua_optionset! {
     #[ua_inner = UInt32]
+    #[ua_type = TrustListMasks]
     pub enum TrustListMasks {
         NONE = open62541_sys::UA_TrustListMasks::UA_TRUSTLISTMASKS_NONE.0,
         TrustedCertificates = open62541_sys::UA_TrustListMasks::UA_TRUSTLISTMASKS_TRUSTEDCERTIFICATES.0,

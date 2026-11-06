@@ -1,5 +1,6 @@
 crate::data_type::ua_optionset! {
     #[ua_inner = UInt32]
+    #[ua_type = BrowseResultMask]
     pub enum BrowseResultMask {
         NONE = open62541_sys::UA_BrowseResultMask::UA_BROWSERESULTMASK_NONE.0,
         ReferenceTypeId = open62541_sys::UA_BrowseResultMask::UA_BROWSERESULTMASK_REFERENCETYPEID.0,

@@ -2,6 +2,7 @@ use open62541_sys::UA_NodeAttributesMask;
 
 crate::data_type::ua_optionset! {
     #[ua_inner = UInt32]
+    #[ua_type = NodeAttributesMask]
     pub enum SpecifiedAttributes {
         NONE = UA_NodeAttributesMask::UA_NODEATTRIBUTESMASK_NONE.0,
         /// Indicates if the `AccessLevel` Attribute is set.
