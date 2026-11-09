@@ -40,8 +40,7 @@ impl ExtensionObject {
     #[must_use]
     pub const fn encoded_type_id(&self) -> Option<&ua::NodeId> {
         if !matches!(
-            // SAFETY: Reading the integer-backed encoding has no extra preconditions.
-            unsafe { self.encoding().as_u32_unchecked() },
+            self.encoding().as_u32(),
             ExtensionObjectEncoding::ENCODED_NOBODY_U32
                 | ExtensionObjectEncoding::ENCODED_BYTESTRING_U32
                 | ExtensionObjectEncoding::ENCODED_XML_U32

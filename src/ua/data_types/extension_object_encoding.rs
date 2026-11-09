@@ -18,11 +18,4 @@ impl ExtensionObjectEncoding {
         // SAFETY: This raw integer conversion has no additional preconditions.
         unsafe { Self::from_ua_unchecked(value) }
     }
-
-    #[must_use]
-    #[deprecated(note = "use unsafe `as_u32_unchecked` instead")]
-    pub const fn as_u32(self) -> u32 {
-        // SAFETY: Reading the raw integer has no additional preconditions.
-        unsafe { self.as_u32_unchecked() }
-    }
 }

@@ -39,11 +39,3 @@ crate::data_type::ua_enum! {
         crate::ua::Array::from_raw_parts(raw.arrayLength, raw.data.cast::<Self::Inner>())
     }
 }
-
-impl Enumeration {
-    /// Extracts raw enum value.
-    #[must_use]
-    pub const fn as_u32(&self) -> u32 {
-        u32::from_ne_bytes(self.0.0.to_ne_bytes())
-    }
-}

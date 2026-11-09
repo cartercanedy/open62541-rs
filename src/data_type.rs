@@ -641,12 +641,8 @@ macro_rules! ua_enum {
                 }
 
                 /// Returns the raw integer bits.
-                ///
-                /// # Safety
-                ///
-                /// Reading the bits has no additional memory-safety preconditions.
                 #[must_use]
-                pub const unsafe fn as_u32_unchecked(self) -> u32 {
+                pub const fn as_u32(self) -> u32 {
                     self.0
                 }
             }
@@ -701,8 +697,7 @@ macro_rules! ua_enum {
             #[cfg(feature = "serde")]
             impl serde::Serialize for $name {
                 fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-                    // SAFETY: Reading native enum bits has no additional preconditions.
-                    let bits = unsafe { self.as_u32_unchecked() };
+                    let bits = self.as_u32();
                     serializer.serialize_i32(i32::from_ne_bytes(bits.to_ne_bytes()))
                 }
             }
@@ -750,8 +745,7 @@ macro_rules! ua_enum {
                 $(
                     #[must_use]
                     pub const fn [<is_ $value:lower>](self: $receiver) -> bool {
-                        // SAFETY: Reading the integer bits has no additional preconditions.
-                        unsafe { self.as_u32_unchecked() == Self::[<$value _U32>] }
+                        self.as_u32() == Self::[<$value _U32>]
                     }
                 )*
             }
@@ -759,13 +753,11 @@ macro_rules! ua_enum {
             impl std::fmt::Display for $name {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                     $(
-                        // SAFETY: Reading the integer bits has no additional preconditions.
-                        if unsafe { self.as_u32_unchecked() } == Self::[<$value _U32>] {
+                        if self.as_u32() == Self::[<$value _U32>] {
                             return f.write_str(stringify!($value));
                         }
                     )*
-                    // SAFETY: Reading the integer bits has no additional preconditions.
-                    unsafe { self.as_u32_unchecked() }.fmt(f)
+                    self.as_u32().fmt(f)
                 }
             }
         }
@@ -800,11 +792,12 @@ macro_rules! ua_enum {
         }
 
         /// Returns the raw integer bit pattern.
-        ///
-        /// # Safety
-        /// Reading the bits has no additional memory-safety preconditions.
+        #[cfg_attr(
+            windows,
+            doc = "\nReinterprets the underlying bits as `u32`, without numeric conversion."
+        )]
         #[must_use]
-        pub const unsafe fn as_u32_unchecked(&self) -> u32 {
+        pub const fn as_u32(&self) -> u32 {
             u32::from_ne_bytes(self.0.0.to_ne_bytes())
         }
     };
@@ -910,9 +903,9 @@ macro_rules! ua_optionset {
 
             #[expect(clippy::allow_attributes, reason = "some implementers may be u32")]
             impl $name {
-                #[allow(unused, reason = "not used by all implementers")]
+                /// Returns the raw bit pattern.
                 #[must_use]
-                pub(crate) const fn [<as_ $inner_t>](self) -> $inner_t {
+                pub const fn [<as_ $inner_t>](self) -> $inner_t {
                     self.0
                 }
 
@@ -931,16 +924,6 @@ macro_rules! ua_optionset {
                 #[must_use]
                 pub const unsafe fn [<from_ $inner_t _unchecked>](inner: $inner_t) -> Self {
                     Self(inner)
-                }
-
-                /// Returns the raw bit pattern.
-                ///
-                /// # Safety
-                ///
-                /// Reading the bit pattern has no additional memory-safety preconditions.
-                #[must_use]
-                pub const unsafe fn [<as_ $inner_t _unchecked>](self) -> $inner_t {
-                    self.0
                 }
 
                 #[doc = "Indicates that no fields are set."]

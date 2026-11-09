@@ -22,7 +22,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   values and preserve unknown bit patterns; other flags and helpers use their unsigned storage width.
   Enum Variants serialize in the same numeric
   form, and enum-array serialization borrows the native payload.
-- Add public unsafe unchecked enum and mask raw conversion helpers.
+- Add safe const enum and mask raw-bit accessors, and unsafe unchecked raw constructors.
 - Expose `ua::ExtensionObjectEncoding` and `ExtensionObject::encoding()`.
 - Add const `set()`, `unset()`, and `clear()` flag operations and readable mask predicates/setters
   such as `reference_type_id()` and `with_reference_type_id()`.
