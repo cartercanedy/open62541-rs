@@ -115,6 +115,16 @@ impl ClientBuilder {
         self
     }
 
+    /// Sets whether to allow plaintext password transmission. Defaults to `false`.
+    ///
+    /// Enabling this permits sending passwords when neither the channel nor the username
+    /// token provides encryption.
+    #[must_use]
+    pub fn allow_none_policy_password(mut self, allow: bool) -> Self {
+        self.config_mut().allowNonePolicyPassword = allow;
+        self
+    }
+
     /// Sets security mode.
     #[must_use]
     pub fn security_mode(mut self, security_mode: ua::MessageSecurityMode) -> Self {
